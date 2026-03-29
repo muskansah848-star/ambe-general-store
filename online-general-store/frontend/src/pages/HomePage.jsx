@@ -1,9 +1,10 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import api from '../utils/api';
 import ProductCard from '../components/ProductCard';
 import Loader from '../components/Loader';
-import { FiSearch, FiChevronLeft, FiChevronRight, FiX } from 'react-icons/fi';
+import { FiSearch, FiChevronLeft, FiChevronRight, FiX, FiMic, FiMicOff } from 'react-icons/fi';
+import { useAuth } from '../context/AuthContext';
 
 const CATEGORIES = [
   { label: 'All',           emoji: '🏪' },
@@ -26,12 +27,16 @@ const SORT_OPTIONS = [
 
 export default function HomePage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { user } = useAuth();
   const [products,  setProducts]  = useState([]);
   const [featured,  setFeatured]  = useState([]);
+  const [recommended, setRecommended] = useState([]);
   const [loading,   setLoading]   = useState(true);
   const [total,     setTotal]     = useState(0);
   const [pages,     setPages]     = useState(1);
   const [inputVal,  setInputVal]  = useState(searchParams.get('keyword') || '');
+  const [listening, setListening] = useState(false);
+  const recognitionRef = useRef(null);
 
   const keyword  = searchParams.get('keyword')  || '';
   const category = searchParams.get('category') || '';
@@ -46,6 +51,34 @@ export default function HomePage() {
       .then(({ data }) => setFeatured(data))
       .catch(() => {});
   }, []);
+
+  // Fetch AI recommendations for logged-in users
+  useEffect(() => {
+    if (!user) return;
+    api.get('/products/recommendations')
+      .then(({ data }) => setRecommended(data))
+      .catch(() => {});
+  }, [user]);
+
+  // Voice search setup
+  const startVoiceSearch = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return alert('Voice search not supported in this browser');
+    if (listening) { recognitionRef.current?.stop(); return; }
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-IN';
+    recognition.interimResults = false;
+    recognition.onstart = () => setListening(true);
+    recognition.onresult = (e) => {
+      const transcript = e.results[0][0].transcript;
+      setInputVal(transcript);
+      setParam('keyword', transcript.trim());
+    };
+    recognition.onend = () => setListening(false);
+    recognition.onerror = () => setListening(false);
+    recognitionRef.current = recognition;
+    recognition.start();
+  };
 
   // Fetch products on filter/page change
   useEffect(() => {
@@ -72,7 +105,8 @@ export default function HomePage() {
   const setParam = (key, value) => {
     const p = new URLSearchParams(searchParams);
     if (value) p.set(key, value); else p.delete(key);
-    p.delete('page');
+    // Only reset page when changing filters, not when changing page itself
+    if (key !== 'page') p.delete('page');
     setSearchParams(p);
   };
 
@@ -95,7 +129,7 @@ export default function HomePage() {
           <div className="relative z-10 max-w-lg">
             <p className="text-green-100 text-sm font-medium mb-1 uppercase tracking-wide">Welcome to</p>
             <h1 className="text-3xl md:text-4xl font-extrabold mb-3 leading-tight">
-              Online General Store
+              Ambe General Store
             </h1>
             <p className="text-green-100 mb-5">
               Fresh groceries, snacks, dairy &amp; more — delivered to your door.
@@ -127,14 +161,20 @@ export default function HomePage() {
             value={inputVal}
             onChange={(e) => setInputVal(e.target.value)}
             placeholder="Search for rice, milk, chips…"
-            className="input-field pl-10 pr-10"
+            className="input-field pl-10 pr-16"
           />
-          {inputVal && (
-            <button type="button" onClick={clearSearch}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-              <FiX size={16} />
+          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+            {inputVal && (
+              <button type="button" onClick={clearSearch} className="text-gray-400 hover:text-gray-600 p-1">
+                <FiX size={16} />
+              </button>
+            )}
+            <button type="button" onClick={startVoiceSearch}
+              className={`p-1 rounded-full transition ${listening ? 'text-red-500 animate-pulse' : 'text-gray-400 hover:text-primary'}`}
+              title="Voice search">
+              {listening ? <FiMicOff size={16} /> : <FiMic size={16} />}
             </button>
-          )}
+          </div>
         </div>
         <button type="submit" className="btn-primary px-5">Search</button>
       </form>
@@ -207,6 +247,20 @@ export default function HomePage() {
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
             {featured.map((p) => <ProductCard key={p._id} product={p} />)}
+          </div>
+          <hr className="mt-10 border-gray-100 dark:border-gray-800" />
+        </section>
+      )}
+
+      {/* ── AI Recommendations (logged-in users, home page) ── */}
+      {!isFiltered && page === 1 && user && recommended.length > 0 && (
+        <section className="mb-10">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold">🤖 Recommended for You</h2>
+            <span className="text-xs text-gray-400">Based on your purchase history</span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+            {recommended.map((p) => <ProductCard key={p._id} product={p} />)}
           </div>
           <hr className="mt-10 border-gray-100 dark:border-gray-800" />
         </section>

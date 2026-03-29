@@ -16,6 +16,7 @@ const userSchema = new mongoose.Schema(
       country: { type: String, default: 'India' },
     },
     phone: { type: String, default: '' },
+    isBlocked: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

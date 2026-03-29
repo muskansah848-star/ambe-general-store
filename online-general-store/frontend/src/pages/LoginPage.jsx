@@ -6,20 +6,37 @@ import toast from 'react-hot-toast';
 import { MdStorefront } from 'react-icons/md';
 import { FiEye, FiEyeOff, FiUser, FiMail, FiLock, FiAlertCircle, FiCheckCircle } from 'react-icons/fi';
 
+// Defined OUTSIDE the component so it never re-mounts on re-render
+function Field({ icon: Icon, error, children }) {
+  return (
+    <div>
+      <div className={`flex items-center border rounded-lg overflow-hidden transition-colors
+        ${error ? 'border-red-400' : 'border-gray-300 dark:border-gray-600 focus-within:border-primary'}`}>
+        <span className="px-3 text-gray-400"><Icon size={16} /></span>
+        {children}
+      </div>
+      {error && (
+        <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+          <FiAlertCircle size={11} />{error}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function LoginPage() {
-  const [isLogin, setIsLogin]     = useState(true);
-  const [form, setForm]           = useState({ name: '', email: '', password: '' });
-  const [showPass, setShowPass]   = useState(false);
-  const [loading, setLoading]     = useState(false);
-  const [serverOk, setServerOk]   = useState(null); // null=checking, true=ok, false=down
-  const [errors, setErrors]       = useState({});
+  const [isLogin, setIsLogin]   = useState(true);
+  const [form, setForm]         = useState({ name: '', email: '', password: '' });
+  const [showPass, setShowPass] = useState(false);
+  const [loading, setLoading]   = useState(false);
+  const [serverOk, setServerOk] = useState(null);
+  const [errors, setErrors]     = useState({});
 
   const { login, register } = useAuth();
-  const navigate  = useNavigate();
-  const location  = useLocation();
-  const from      = location.state?.from || '/';
+  const navigate = useNavigate();
+  const location = useLocation();
+  const from     = location.state?.from || '/';
 
-  // Check if backend is reachable on mount
   useEffect(() => {
     api.get('/health')
       .then(() => setServerOk(true))
@@ -41,12 +58,10 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
-
     if (serverOk === false) {
-      toast.error('Backend server is not running. Start it with: npm run dev');
+      toast.error('Backend server is not running. Start it with: node server.js');
       return;
     }
-
     setLoading(true);
     try {
       if (isLogin) {
@@ -65,8 +80,7 @@ export default function LoginPage() {
       } else {
         const msg = err.response?.data?.message || 'Something went wrong';
         toast.error(msg);
-        // Highlight the relevant field
-        if (msg.toLowerCase().includes('email')) setErrors((p) => ({ ...p, email: msg }));
+        if (msg.toLowerCase().includes('email'))    setErrors((p) => ({ ...p, email: msg }));
         if (msg.toLowerCase().includes('password')) setErrors((p) => ({ ...p, password: msg }));
       }
     } finally {
@@ -78,18 +92,13 @@ export default function LoginPage() {
     setIsLogin((v) => !v);
     setForm({ name: '', email: '', password: '' });
     setErrors({});
+    setShowPass(false);
   };
 
-  const Field = ({ icon: Icon, error, children }) => (
-    <div>
-      <div className={`flex items-center border rounded-lg overflow-hidden transition-colors
-        ${error ? 'border-red-400' : 'border-gray-300 dark:border-gray-600 focus-within:border-primary'}`}>
-        <span className="px-3 text-gray-400"><Icon size={16} /></span>
-        {children}
-      </div>
-      {error && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><FiAlertCircle size={11} />{error}</p>}
-    </div>
-  );
+  const set = (field) => (e) => {
+    setForm((prev) => ({ ...prev, [field]: e.target.value }));
+    setErrors((prev) => ({ ...prev, [field]: '' }));
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-green-50 to-white dark:from-gray-900 dark:to-gray-950">
@@ -100,21 +109,21 @@ export default function LoginPage() {
           <div className="flex justify-center text-primary mb-2">
             <MdStorefront size={44} />
           </div>
-          <h1 className="text-2xl font-bold">Online General Store</h1>
+          <h1 className="text-2xl font-bold">Ambe General Store</h1>
           <p className="text-gray-400 text-sm mt-1">
             {isLogin ? 'Sign in to your account' : 'Create a new account'}
           </p>
         </div>
 
-        {/* Server status banner */}
+        {/* Server status */}
         {serverOk === false && (
           <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-2">
-            <FiAlertCircle className="text-red-500 mt-0.5 flex-shrink-0" size={16} />
+            <FiAlertCircle className="text-red-500 mt-0.5 shrink-0" size={16} />
             <div className="text-sm">
               <p className="font-semibold text-red-600 dark:text-red-400">Backend server is offline</p>
               <p className="text-red-500 text-xs mt-0.5">
                 Open a terminal in the <code className="bg-red-100 dark:bg-red-900 px-1 rounded">backend</code> folder and run:
-                <code className="block bg-red-100 dark:bg-red-900 px-2 py-1 rounded mt-1 font-mono">npm run dev</code>
+                <code className="block bg-red-100 dark:bg-red-900 px-2 py-1 rounded mt-1 font-mono">node server.js</code>
               </p>
             </div>
           </div>
@@ -130,7 +139,7 @@ export default function LoginPage() {
         <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 mb-6">
           <button
             type="button"
-            onClick={() => isLogin || switchMode()}
+            onClick={() => !isLogin && switchMode()}
             className={`flex-1 py-2 rounded-md text-sm font-medium transition-all
               ${isLogin ? 'bg-white dark:bg-gray-800 shadow text-primary' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
           >
@@ -138,7 +147,7 @@ export default function LoginPage() {
           </button>
           <button
             type="button"
-            onClick={() => !isLogin || switchMode()}
+            onClick={() => isLogin && switchMode()}
             className={`flex-1 py-2 rounded-md text-sm font-medium transition-all
               ${!isLogin ? 'bg-white dark:bg-gray-800 shadow text-primary' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
           >
@@ -154,7 +163,7 @@ export default function LoginPage() {
                 type="text"
                 placeholder="Full Name"
                 value={form.name}
-                onChange={(e) => { setForm({ ...form, name: e.target.value }); setErrors((p) => ({ ...p, name: '' })); }}
+                onChange={set('name')}
                 className="flex-1 py-2.5 pr-3 bg-transparent outline-none text-sm"
                 autoComplete="name"
               />
@@ -166,7 +175,7 @@ export default function LoginPage() {
               type="email"
               placeholder="Email Address"
               value={form.email}
-              onChange={(e) => { setForm({ ...form, email: e.target.value }); setErrors((p) => ({ ...p, email: '' })); }}
+              onChange={set('email')}
               className="flex-1 py-2.5 pr-3 bg-transparent outline-none text-sm"
               autoComplete="email"
             />
@@ -177,12 +186,15 @@ export default function LoginPage() {
               type={showPass ? 'text' : 'password'}
               placeholder="Password (min 6 characters)"
               value={form.password}
-              onChange={(e) => { setForm({ ...form, password: e.target.value }); setErrors((p) => ({ ...p, password: '' })); }}
+              onChange={set('password')}
               className="flex-1 py-2.5 bg-transparent outline-none text-sm"
               autoComplete={isLogin ? 'current-password' : 'new-password'}
             />
-            <button type="button" onClick={() => setShowPass(!showPass)}
-              className="px-3 text-gray-400 hover:text-gray-600">
+            <button
+              type="button"
+              onClick={() => setShowPass((v) => !v)}
+              className="px-3 text-gray-400 hover:text-gray-600"
+            >
               {showPass ? <FiEyeOff size={16} /> : <FiEye size={16} />}
             </button>
           </Field>

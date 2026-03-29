@@ -27,12 +27,11 @@ const allowedOrigins = [
 
 const corsOptions = {
   origin: (origin, callback) => {
-    // Allow requests with no origin (Postman, curl, mobile)
     if (!origin) return callback(null, true);
-    // Allow any localhost port in development
     if (origin.match(/^http:\/\/localhost:\d+$/)) return callback(null, true);
-    // Allow any LAN IP (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
     if (origin.match(/^http:\/\/(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)\d+\.\d+:\d+$/)) return callback(null, true);
+    // Allow Netlify and Vercel deployments
+    if (origin.match(/\.netlify\.app$/) || origin.match(/\.vercel\.app$/)) return callback(null, true);
     if (allowedOrigins.includes(origin)) return callback(null, true);
     callback(new Error(`CORS blocked: ${origin}`));
   },
@@ -68,10 +67,12 @@ app.get('/api/health', (req, res) => {
 });
 
 // Routes
-app.use('/api/auth',    require('./routes/authRoutes'));
-app.use('/api/products',require('./routes/productRoutes'));
-app.use('/api/orders',  require('./routes/orderRoutes'));
-app.use('/api/payment', require('./routes/paymentRoutes'));
+app.use('/api/auth',     require('./routes/authRoutes'));
+app.use('/api/products', require('./routes/productRoutes'));
+app.use('/api/orders',   require('./routes/orderRoutes'));
+app.use('/api/payment',  require('./routes/paymentRoutes'));
+app.use('/api/wishlist', require('./routes/wishlistRoutes'));
+app.use('/api/users',    require('./routes/userRoutes'));
 
 // 404 handler
 app.use((req, res) => {

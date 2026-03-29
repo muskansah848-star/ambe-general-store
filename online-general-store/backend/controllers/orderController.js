@@ -1,6 +1,8 @@
 const Order = require('../models/Order');
 const Product = require('../models/Product');
+const User = require('../models/User');
 const { sendOrderConfirmation, sendStatusUpdate } = require('../utils/sendEmail');
+const { sendOrderSMS, sendStatusSMS } = require('../utils/sendSMS');
 const generateInvoice = require('../utils/generateInvoice');
 
 // @desc Place order
@@ -37,8 +39,13 @@ exports.placeOrder = async (req, res) => {
     const io = req.app.get('io');
     if (io) io.emit('newOrder', { orderId: order._id, userId: req.user._id });
 
-    // Send email (non-blocking — don't fail order if email fails)
+    // Send email + SMS (non-blocking)
     sendOrderConfirmation(req.user, order).catch((e) => console.error('Email error:', e.message));
+    const fullUser = await User.findById(req.user._id).select('phone');
+    if (fullUser?.phone) {
+      sendOrderSMS(fullUser.phone, { name: req.user.name, orderId: order._id, total: order.totalPrice })
+        .catch((e) => console.error('SMS error:', e.message));
+    }
 
     res.status(201).json(order);
   } catch (err) {
@@ -105,6 +112,10 @@ exports.updateOrderStatus = async (req, res) => {
     if (io) io.emit('orderStatusUpdate', { orderId: order._id, status: order.status });
 
     sendStatusUpdate(order.user, order).catch((e) => console.error('Email error:', e.message));
+    if (order.user?.phone) {
+      sendStatusSMS(order.user.phone, { orderId: order._id, status: order.status })
+        .catch((e) => console.error('SMS error:', e.message));
+    }
     res.json(order);
   } catch (err) {
     res.status(500).json({ message: 'Server error updating order status' });
