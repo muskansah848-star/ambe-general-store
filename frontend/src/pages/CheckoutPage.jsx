@@ -137,13 +137,37 @@ export default function CheckoutPage() {
     );
     if (paymentMethod === 'FonePay') return (
       <div className="p-4 rounded-lg border border-dashed border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-sm space-y-2">
-        <p className="font-semibold text-blue-700 dark:text-blue-300">🔵 FonePay QR Payment</p>
-        <p>Open your bank app → Scan QR → Pay <strong>{amt}</strong></p>
-        <div className="flex justify-center">
-          <img src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(`fonepay://pay?merchant=AMBESTORE&amount=${grandTotal}&currency=NPR`)}`}
-            alt="FonePay QR" className="w-40 h-40 rounded border" />
+        <div className="flex items-center justify-center gap-2 mb-1">
+          <span className="text-lg font-bold text-blue-700 dark:text-blue-300">fone</span>
+          <span className="bg-red-600 text-white text-xs font-bold px-1.5 py-0.5 rounded">pay</span>
         </div>
-        <p className="text-xs text-center text-gray-500">Supported: NIC Asia, Nabil, Everest, Himalayan, Laxmi, Sanima, Global IME & all Nepali banks</p>
+        <p className="text-center text-xs text-gray-500 dark:text-gray-400">नेपाल राष्ट्र बैंकबाट अनुमित प्राप्त</p>
+        <p className="font-semibold text-blue-700 dark:text-blue-300 text-center">🔵 Scan to Pay via FonePay</p>
+        <p className="text-center text-gray-600 dark:text-gray-300 text-xs">Open your bank app → Scan QR → Pay <strong>NPR {grandTotal}</strong></p>
+
+        {/* Real FonePay QR image */}
+        <div className="flex justify-center">
+          <div className="bg-white p-3 rounded-xl border-2 border-blue-200 shadow">
+            <img
+              src="/fonepay-qr.png"
+              alt="FonePay QR - Ambe Departmental Store"
+              className="w-48 h-48 object-contain"
+              onError={(e) => {
+                // Fallback to generated QR if image not found
+                e.target.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent('2222010004189889')}`;
+              }}
+            />
+          </div>
+        </div>
+
+        <div className="text-center space-y-0.5 mt-1">
+          <p className="font-bold text-gray-800 dark:text-gray-100">AMBE DEPARTMENTAL STORE</p>
+          <p className="text-xs text-gray-500">Terminal: 2222010004189889</p>
+          <p className="text-xs text-gray-500">Address: SIMARA BRANCH</p>
+          <p className="text-sm font-semibold text-blue-600 dark:text-blue-400 mt-1">Amount: NPR {grandTotal}</p>
+        </div>
+
+        <p className="text-xs text-gray-500 text-center">Supported: NIC Asia, Nabil, Everest, Himalayan, Laxmi, Sanima, Global IME & all Nepali banks</p>
       </div>
     );
     if (paymentMethod === 'ConnectIPS') return (
