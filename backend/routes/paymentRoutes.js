@@ -1,20 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const { protect, adminOnly } = require('../middleware/auth');
 const Coupon = require('../models/Coupon');
 const Refund = require('../models/Refund');
 const Order = require('../models/Order');
-
-// Lazy init — only created when actually used, so missing keys don't crash startup
-function getRazorpay() {
-  if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) return null;
-  return new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_KEY_SECRET,
-  });
-}
 
 function getStripe() {
   if (!process.env.STRIPE_SECRET_KEY) return null;
@@ -33,46 +23,6 @@ router.post('/create-payment-intent', protect, async (req, res) => {
       currency: 'inr',
     });
     res.json({ clientSecret: paymentIntent.client_secret });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-// ─── RAZORPAY ────────────────────────────────────────────
-// @desc Create Razorpay order
-router.post('/razorpay/create-order', protect, async (req, res) => {
-  const { amount } = req.body;
-  try {
-    const razorpay = getRazorpay();
-    if (!razorpay) return res.status(400).json({ message: 'Razorpay not configured' });
-    const order = await razorpay.orders.create({
-      amount: Math.round(amount * 100),
-      currency: 'INR',
-      receipt: `receipt_${Date.now()}`,
-    });
-    res.json({
-      orderId: order.id,
-      amount: order.amount,
-      currency: order.currency,
-      key: process.env.RAZORPAY_KEY_ID,
-    });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-// @desc Verify Razorpay payment signature
-router.post('/razorpay/verify', protect, async (req, res) => {
-  const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
-  try {
-    const sign = razorpay_order_id + '|' + razorpay_payment_id;
-    const expectedSign = crypto
-      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
-      .update(sign)
-      .digest('hex');
-    if (expectedSign !== razorpay_signature)
-      return res.status(400).json({ message: 'Invalid payment signature' });
-    res.json({ success: true, paymentId: razorpay_payment_id });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -206,15 +156,7 @@ router.put('/refund/:id/process', protect, adminOnly, async (req, res) => {
     const order = refund.order;
     let gatewayRefundId = '';
 
-    if (order.paymentMethod === 'Razorpay' && order.paymentResult?.id) {
-      const razorpay = getRazorpay();
-      if (razorpay) {
-        const rzRefund = await razorpay.payments.refund(order.paymentResult.id, {
-          amount: Math.round(refund.amount * 100),
-        });
-        gatewayRefundId = rzRefund.id;
-      }
-    } else if (order.paymentMethod === 'Stripe' && order.paymentResult?.id) {
+    if (order.paymentMethod === 'Stripe' && order.paymentResult?.id) {
       const stripe = getStripe();
       if (stripe) {
         const strRefund = await stripe.refunds.create({

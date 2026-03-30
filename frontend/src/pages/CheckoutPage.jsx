@@ -6,17 +6,6 @@ import api from '../utils/api';
 import toast from 'react-hot-toast';
 import { FiMapPin, FiCreditCard, FiTruck, FiNavigation, FiTag, FiX } from 'react-icons/fi';
 
-// Load Razorpay script dynamically
-const loadRazorpay = () =>
-  new Promise((resolve) => {
-    if (window.Razorpay) return resolve(true);
-    const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
-    document.body.appendChild(script);
-  });
-
 export default function CheckoutPage() {
   const { cart, totalPrice, dispatch } = useCart();
   const { user } = useAuth();
@@ -112,38 +101,6 @@ export default function CheckoutPage() {
     setStep(2);
   };
 
-  const handleRazorpay = async () => {
-    setLoading(true);
-    const loaded = await loadRazorpay();
-    if (!loaded) { toast.error('Razorpay failed to load'); setLoading(false); return; }
-    try {
-      const { data } = await api.post('/payment/razorpay/create-order', { amount: grandTotal });
-      const options = {
-        key: data.key,
-        amount: data.amount,
-        currency: data.currency,
-        name: 'Ambe General Store',
-        description: 'Order Payment',
-        order_id: data.orderId,
-        handler: async (response) => {
-          try {
-            await api.post('/payment/razorpay/verify', response);
-            await placeOrder('Razorpay', response.razorpay_payment_id);
-          } catch {
-            toast.error('Payment verification failed');
-          }
-        },
-        prefill: { name: user?.name, email: user?.email },
-        theme: { color: '#16a34a' },
-      };
-      new window.Razorpay(options).open();
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Razorpay error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const placeOrder = async (method = paymentMethod, paymentId = null) => {
     setLoading(true);
     try {
@@ -173,10 +130,9 @@ export default function CheckoutPage() {
   };
 
   const PAYMENT_METHODS = [
-    { value: 'COD',      label: '💵 Cash on Delivery',                   desc: 'Pay when your order arrives' },
-    { value: 'Razorpay', label: '🇮🇳 Razorpay (UPI / Cards / NetBanking)', desc: 'Pay securely via Razorpay' },
-    { value: 'UPI',      label: '📱 UPI / QR Code',                       desc: 'Scan QR or pay via UPI ID' },
-    { value: 'Stripe',   label: '💳 Credit / Debit Card (Stripe)',         desc: 'Secure international payment' },
+    { value: 'COD', label: '💵 Cash on Delivery', desc: 'Pay when your order arrives' },
+    { value: 'UPI', label: '📱 UPI / QR Code',    desc: 'Scan QR or pay via UPI ID'  },
+    { value: 'Stripe', label: '💳 Credit / Debit Card (Stripe)', desc: 'Secure international payment' },
   ];
 
   return (
@@ -311,15 +267,9 @@ export default function CheckoutPage() {
               </div>
               <div className="flex gap-3">
                 <button onClick={() => setStep(2)} className="btn-outline flex-1">Back</button>
-                {paymentMethod === 'Razorpay' ? (
-                  <button onClick={handleRazorpay} disabled={loading} className="btn-primary flex-1">
-                    {loading ? 'Processing...' : 'Pay with Razorpay'}
-                  </button>
-                ) : (
-                  <button onClick={() => placeOrder()} disabled={loading} className="btn-primary flex-1">
-                    {loading ? 'Placing Order...' : 'Place Order'}
-                  </button>
-                )}
+                <button onClick={() => placeOrder()} disabled={loading} className="btn-primary flex-1">
+                  {loading ? 'Placing Order...' : 'Place Order'}
+                </button>
               </div>
             </div>
           )}
