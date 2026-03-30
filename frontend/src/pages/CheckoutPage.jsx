@@ -130,9 +130,54 @@ export default function CheckoutPage() {
   };
 
   const PAYMENT_METHODS = [
-    { value: 'COD', label: '💵 Cash on Delivery', desc: 'Pay when your order arrives' },
-    { value: 'UPI', label: '📱 UPI / QR Code',    desc: 'Scan QR or pay via UPI ID'  },
-    { value: 'Stripe', label: '💳 Credit / Debit Card (Stripe)', desc: 'Secure international payment' },
+    {
+      value: 'COD',
+      label: '💵 Cash on Delivery',
+      desc: 'Pay in cash when your order arrives',
+      color: 'text-green-600',
+    },
+    {
+      value: 'eSewa',
+      label: '🟢 eSewa',
+      desc: 'Pay via eSewa digital wallet',
+      color: 'text-green-500',
+    },
+    {
+      value: 'FonePay',
+      label: '🔵 FonePay',
+      desc: 'Pay via FonePay — scan QR with any Nepali bank app',
+      color: 'text-blue-600',
+    },
+    {
+      value: 'ConnectIPS',
+      label: '🏦 ConnectIPS',
+      desc: 'Nepal Clearing House — all Nepali banks supported',
+      color: 'text-indigo-600',
+    },
+    {
+      value: 'IMEPay',
+      label: '🟠 IME Pay',
+      desc: 'Pay via IME Pay wallet',
+      color: 'text-orange-500',
+    },
+    {
+      value: 'Khalti',
+      label: '🟣 Khalti',
+      desc: 'Pay via Khalti digital wallet',
+      color: 'text-purple-600',
+    },
+    {
+      value: 'NetBanking',
+      label: '🏛️ Net Banking',
+      desc: 'Nabil, NIC Asia, Everest, Himalayan, Laxmi, Sanima & more',
+      color: 'text-gray-700',
+    },
+    {
+      value: 'Stripe',
+      label: '💳 International Card (Stripe)',
+      desc: 'Visa / Mastercard — secure international payment',
+      color: 'text-blue-500',
+    },
   ];
 
   return (
@@ -221,18 +266,67 @@ export default function CheckoutPage() {
                 ))}
               </div>
 
-              {/* UPI QR code shown inline when UPI selected */}
-              {paymentMethod === 'UPI' && (
-                <div className="flex flex-col items-center gap-2 p-4 border rounded-lg border-dashed border-primary">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                    Scan with any UPI app (GPay, PhonePe, Paytm)
-                  </p>
-                  <img src={upiQRUrl} alt="UPI QR Code" className="w-44 h-44 rounded-lg" />
-                  <p className="text-xs text-gray-400">UPI ID: <span className="font-mono text-primary">{upiId}</span></p>
-                  <p className="text-xs text-gray-400">Amount: <strong>₹{grandTotal}</strong></p>
-                  <p className="text-xs text-yellow-600 dark:text-yellow-400 text-center">
-                    After payment, click "Review Order" and place your order.
-                  </p>
+              {/* Payment instructions per method */}
+              {paymentMethod === 'eSewa' && (
+                <div className="p-4 border rounded-lg border-dashed border-green-500 bg-green-50 dark:bg-green-900/20 text-sm space-y-1">
+                  <p className="font-semibold text-green-700 dark:text-green-300">🟢 eSewa Payment</p>
+                  <p className="text-gray-600 dark:text-gray-300">eSewa ID: <span className="font-mono font-bold text-green-600">9844127675</span></p>
+                  <p className="text-gray-600 dark:text-gray-300">Amount: <strong>NPR {grandTotal}</strong></p>
+                  <p className="text-xs text-yellow-600 dark:text-yellow-400">Open eSewa app → Send Money → enter ID and amount → complete payment → then place order.</p>
+                </div>
+              )}
+
+              {paymentMethod === 'FonePay' && (
+                <div className="p-4 border rounded-lg border-dashed border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-sm space-y-2">
+                  <p className="font-semibold text-blue-700 dark:text-blue-300">🔵 FonePay QR Payment</p>
+                  <p className="text-gray-600 dark:text-gray-300">Scan the QR below with your bank app (NIC Asia, Nabil, Everest, Himalayan, etc.)</p>
+                  <div className="flex justify-center">
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(`fonepay://pay?merchant=AMBESTORE&amount=${grandTotal}&currency=NPR`)}`}
+                      alt="FonePay QR" className="w-44 h-44 rounded-lg border"
+                    />
+                  </div>
+                  <p className="text-gray-500 text-xs text-center">Amount: <strong>NPR {grandTotal}</strong></p>
+                  <p className="text-xs text-yellow-600 dark:text-yellow-400 text-center">After payment, click "Review Order" and place your order.</p>
+                </div>
+              )}
+
+              {paymentMethod === 'ConnectIPS' && (
+                <div className="p-4 border rounded-lg border-dashed border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 text-sm space-y-1">
+                  <p className="font-semibold text-indigo-700 dark:text-indigo-300">🏦 ConnectIPS Payment</p>
+                  <p className="text-gray-600 dark:text-gray-300">Merchant ID: <span className="font-mono font-bold">AMBESTORE</span></p>
+                  <p className="text-gray-600 dark:text-gray-300">Amount: <strong>NPR {grandTotal}</strong></p>
+                  <p className="text-xs text-gray-500">Supported banks: Nabil, NIC Asia, Everest, Himalayan, Laxmi, Sanima, Kumari, Machhapuchchhre, Citizens, Global IME, NMB, Prabhu, Sunrise, Nepal SBI, Rastriya Banijya, Agriculture Development Bank</p>
+                  <p className="text-xs text-yellow-600 dark:text-yellow-400">Login to connectips.com → Fund Transfer → enter merchant ID and amount → confirm.</p>
+                </div>
+              )}
+
+              {paymentMethod === 'IMEPay' && (
+                <div className="p-4 border rounded-lg border-dashed border-orange-500 bg-orange-50 dark:bg-orange-900/20 text-sm space-y-1">
+                  <p className="font-semibold text-orange-700 dark:text-orange-300">🟠 IME Pay Payment</p>
+                  <p className="text-gray-600 dark:text-gray-300">IME Pay ID: <span className="font-mono font-bold text-orange-600">9844127675</span></p>
+                  <p className="text-gray-600 dark:text-gray-300">Amount: <strong>NPR {grandTotal}</strong></p>
+                  <p className="text-xs text-yellow-600 dark:text-yellow-400">Open IME Pay app → Send Money → enter ID and amount → complete payment → then place order.</p>
+                </div>
+              )}
+
+              {paymentMethod === 'Khalti' && (
+                <div className="p-4 border rounded-lg border-dashed border-purple-500 bg-purple-50 dark:bg-purple-900/20 text-sm space-y-1">
+                  <p className="font-semibold text-purple-700 dark:text-purple-300">🟣 Khalti Payment</p>
+                  <p className="text-gray-600 dark:text-gray-300">Khalti ID: <span className="font-mono font-bold text-purple-600">9844127675</span></p>
+                  <p className="text-gray-600 dark:text-gray-300">Amount: <strong>NPR {grandTotal}</strong></p>
+                  <p className="text-xs text-yellow-600 dark:text-yellow-400">Open Khalti app → Send Money → enter ID and amount → complete payment → then place order.</p>
+                </div>
+              )}
+
+              {paymentMethod === 'NetBanking' && (
+                <div className="p-4 border rounded-lg border-dashed border-gray-400 bg-gray-50 dark:bg-gray-800 text-sm space-y-2">
+                  <p className="font-semibold text-gray-700 dark:text-gray-200">🏛️ Net Banking</p>
+                  <p className="text-gray-600 dark:text-gray-300">Account Name: <strong>Ambe Departmental Store</strong></p>
+                  <p className="text-gray-600 dark:text-gray-300">Account No: <span className="font-mono font-bold">1234567890</span></p>
+                  <p className="text-gray-600 dark:text-gray-300">Bank: <strong>Nepal Bank / Nabil Bank</strong></p>
+                  <p className="text-gray-600 dark:text-gray-300">Amount: <strong>NPR {grandTotal}</strong></p>
+                  <p className="text-xs text-yellow-600 dark:text-yellow-400">Transfer via your bank's mobile app or internet banking, then place your order. Send screenshot to +977 984 4127675 on WhatsApp.</p>
                 </div>
               )}
 
