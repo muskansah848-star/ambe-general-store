@@ -21,7 +21,7 @@ const orderSchema = new mongoose.Schema(
     },
     paymentMethod: {
       type: String,
-      enum: ['COD', 'eSewa', 'FonePay', 'IMEPay', 'Khalti', 'NetBanking'],
+      enum: ['COD', 'eSewa', 'FonePay'],
       default: 'COD',
     },
     paymentResult: {

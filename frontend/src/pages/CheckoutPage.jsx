@@ -5,7 +5,7 @@ import api from '../utils/api';
 import toast from 'react-hot-toast';
 import { FiMapPin, FiCreditCard, FiNavigation, FiTag, FiX } from 'react-icons/fi';
 
-const ONLINE_METHODS = ['eSewa', 'FonePay', 'IMEPay', 'Khalti', 'NetBanking'];
+const ONLINE_METHODS = ['eSewa', 'FonePay'];
 
 export default function CheckoutPage() {
   const { cart, totalPrice, dispatch } = useCart();
@@ -103,12 +103,9 @@ export default function CheckoutPage() {
   };
 
   const PAYMENT_METHODS = [
-    { value: 'COD',        label: '💵 Cash on Delivery', desc: 'Pay in cash when your order arrives' },
-    { value: 'eSewa',      label: '🟢 eSewa',            desc: 'Pay via eSewa digital wallet'        },
-    { value: 'FonePay',    label: '🔵 FonePay',          desc: 'Scan QR with any Nepali bank app'    },
-    { value: 'IMEPay',     label: '🟠 IME Pay',          desc: 'Pay via IME Pay wallet'              },
-    { value: 'Khalti',     label: '🟣 Khalti',           desc: 'Pay via Khalti digital wallet'       },
-    { value: 'NetBanking', label: '🏛️ Net Banking',      desc: 'Direct bank transfer — all Nepali banks' },
+    { value: 'COD',     label: '💵 Cash on Delivery', desc: 'Pay in cash when your order arrives' },
+    { value: 'eSewa',   label: '🟢 eSewa',            desc: 'Pay via eSewa digital wallet'        },
+    { value: 'FonePay', label: '🔵 FonePay',          desc: 'Scan QR with any Nepali bank app'    },
   ];
 
   const PaymentInstructions = () => {
@@ -151,32 +148,9 @@ export default function CheckoutPage() {
         <p className="text-xs text-gray-500 text-center">Supported: NIC Asia, Nabil, Everest, Himalayan, Laxmi, Sanima, Global IME & all Nepali banks</p>
       </div>
     );
-    if (paymentMethod === 'IMEPay') return (
-      <div className="p-4 rounded-lg border border-dashed border-orange-500 bg-orange-50 dark:bg-orange-900/20 text-sm space-y-1">
-        <p className="font-semibold text-orange-700 dark:text-orange-300">🟠 IME Pay Steps</p>
-        <p>1. Open <strong>IME Pay</strong> app → Tap <strong>Send Money</strong></p>
-        <p>2. IME Pay ID: <span className="font-mono font-bold text-orange-600">{id}</span></p>
-        <p>3. Amount: <strong>{amt}</strong> → Complete payment</p>
-      </div>
-    );
-    if (paymentMethod === 'Khalti') return (
-      <div className="p-4 rounded-lg border border-dashed border-purple-500 bg-purple-50 dark:bg-purple-900/20 text-sm space-y-1">
-        <p className="font-semibold text-purple-700 dark:text-purple-300">🟣 Khalti Steps</p>
-        <p>1. Open <strong>Khalti</strong> app → Tap <strong>Send Money</strong></p>
-        <p>2. Khalti ID: <span className="font-mono font-bold text-purple-600">{id}</span></p>
-        <p>3. Amount: <strong>{amt}</strong> → Complete payment</p>
-      </div>
-    );
-    if (paymentMethod === 'NetBanking') return (
-      <div className="p-4 rounded-lg border border-dashed border-gray-400 bg-gray-50 dark:bg-gray-800 text-sm space-y-1">
-        <p className="font-semibold text-gray-700 dark:text-gray-200">🏛️ Bank Transfer Details</p>
-        <p>Account Name: <strong>Ambe Departmental Store</strong></p>
-        <p>Account No: <span className="font-mono font-bold">1234567890</span></p>
-        <p>Bank: <strong>Nabil Bank / Nepal Bank</strong></p>
-        <p>Amount: <strong>{amt}</strong></p>
-        <p className="text-xs text-yellow-600 dark:text-yellow-400">After transfer, send screenshot to <strong>+977 984 4127675</strong> on WhatsApp.</p>
-      </div>
-    );
+    if (paymentMethod === 'NetBanking') return null;
+    if (paymentMethod === 'IMEPay') return null;
+    if (paymentMethod === 'Khalti') return null;
     return null;
   };
 
