@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const { protect, adminOnly } = require('../middleware/auth');
@@ -8,16 +7,27 @@ const Coupon = require('../models/Coupon');
 const Refund = require('../models/Refund');
 const Order = require('../models/Order');
 
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
+// Lazy init — only created when actually used, so missing keys don't crash startup
+function getRazorpay() {
+  if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) return null;
+  return new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET,
+  });
+}
+
+function getStripe() {
+  if (!process.env.STRIPE_SECRET_KEY) return null;
+  return require('stripe')(process.env.STRIPE_SECRET_KEY);
+}
 
 // ─── STRIPE ──────────────────────────────────────────────
 // @desc Create Stripe payment intent
 router.post('/create-payment-intent', protect, async (req, res) => {
   const { amount } = req.body;
   try {
+    const stripe = getStripe();
+    if (!stripe) return res.status(400).json({ message: 'Stripe not configured' });
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amount * 100),
       currency: 'inr',
@@ -33,6 +43,8 @@ router.post('/create-payment-intent', protect, async (req, res) => {
 router.post('/razorpay/create-order', protect, async (req, res) => {
   const { amount } = req.body;
   try {
+    const razorpay = getRazorpay();
+    if (!razorpay) return res.status(400).json({ message: 'Razorpay not configured' });
     const order = await razorpay.orders.create({
       amount: Math.round(amount * 100),
       currency: 'INR',
@@ -195,16 +207,22 @@ router.put('/refund/:id/process', protect, adminOnly, async (req, res) => {
     let gatewayRefundId = '';
 
     if (order.paymentMethod === 'Razorpay' && order.paymentResult?.id) {
-      const rzRefund = await razorpay.payments.refund(order.paymentResult.id, {
-        amount: Math.round(refund.amount * 100),
-      });
-      gatewayRefundId = rzRefund.id;
+      const razorpay = getRazorpay();
+      if (razorpay) {
+        const rzRefund = await razorpay.payments.refund(order.paymentResult.id, {
+          amount: Math.round(refund.amount * 100),
+        });
+        gatewayRefundId = rzRefund.id;
+      }
     } else if (order.paymentMethod === 'Stripe' && order.paymentResult?.id) {
-      const strRefund = await stripe.refunds.create({
-        payment_intent: order.paymentResult.id,
-        amount: Math.round(refund.amount * 100),
-      });
-      gatewayRefundId = strRefund.id;
+      const stripe = getStripe();
+      if (stripe) {
+        const strRefund = await stripe.refunds.create({
+          payment_intent: order.paymentResult.id,
+          amount: Math.round(refund.amount * 100),
+        });
+        gatewayRefundId = strRefund.id;
+      }
     }
 
     refund.status = 'Completed';
