@@ -40,7 +40,11 @@ export default function LoginPage() {
   useEffect(() => {
     api.get('/health')
       .then(() => setServerOk(true))
-      .catch(() => setServerOk(false));
+      .catch(() => {
+        // In production on Render, the health check may fail due to cold start
+        // Don't block the user — just hide the banner
+        setServerOk(null);
+      });
   }, []);
 
   const validate = () => {
@@ -58,10 +62,6 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
-    if (serverOk === false) {
-      toast.error('Backend server is not running. Start it with: node server.js');
-      return;
-    }
     setLoading(true);
     try {
       if (isLogin) {
@@ -116,19 +116,6 @@ export default function LoginPage() {
         </div>
 
         {/* Server status */}
-        {serverOk === false && (
-          <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-2">
-            <FiAlertCircle className="text-red-500 mt-0.5 shrink-0" size={16} />
-            <div className="text-sm">
-              <p className="font-semibold text-red-600 dark:text-red-400">Backend server is offline</p>
-              <p className="text-red-500 text-xs mt-0.5">
-                Open a terminal in the <code className="bg-red-100 dark:bg-red-900 px-1 rounded">backend</code> folder and run:
-                <code className="block bg-red-100 dark:bg-red-900 px-2 py-1 rounded mt-1 font-mono">node server.js</code>
-              </p>
-            </div>
-          </div>
-        )}
-
         {serverOk === true && (
           <div className="mb-4 p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
             <FiCheckCircle size={14} /> Server connected
