@@ -134,7 +134,8 @@ export default function CheckoutPage() {
               alt="FonePay QR - Ambe Departmental Store"
               className="w-48 h-48 object-contain"
               onError={(e) => {
-                e.target.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent('2222010004189889')}`;
+                e.target.onerror = null;
+                e.target.src = `https://quickchart.io/qr?text=${encodeURIComponent('2222010004189889')}&size=200`;
               }}
             />
           </div>

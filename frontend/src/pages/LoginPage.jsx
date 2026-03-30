@@ -68,7 +68,7 @@ export default function LoginPage() {
       }
     } catch (err) {
       if (!err.response) {
-        toast.error('Cannot connect to server. Please try again in a moment.');
+        toast.error('Cannot connect to server. Please wait a moment and try again — server may be waking up.');
       } else {
         const msg = err.response?.data?.message || 'Something went wrong';
         toast.error(msg);
