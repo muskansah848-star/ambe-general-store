@@ -1,16 +1,14 @@
 import { useState } from 'react';
 import { useCart } from '../context/CartContext';
-import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
-import { FiMapPin, FiCreditCard, FiTruck, FiNavigation, FiTag, FiX, FiCheckCircle } from 'react-icons/fi';
+import { FiMapPin, FiCreditCard, FiNavigation, FiTag, FiX } from 'react-icons/fi';
 
-const ONLINE_METHODS = ['eSewa', 'FonePay', 'ConnectIPS', 'IMEPay', 'Khalti', 'NetBanking', 'Stripe'];
+const ONLINE_METHODS = ['eSewa', 'FonePay', 'IMEPay', 'Khalti', 'NetBanking'];
 
 export default function CheckoutPage() {
   const { cart, totalPrice, dispatch } = useCart();
-  const { user } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -26,11 +24,8 @@ export default function CheckoutPage() {
   const tax = Math.round(totalPrice * 0.05);
   const grandTotal = totalPrice + shipping + tax - discount;
 
-  const [address, setAddress] = useState({
-    street: '', city: '', state: '', pincode: '', country: 'Nepal',
-  });
+  const [address, setAddress] = useState({ street: '', city: '', state: '', pincode: '', country: 'Nepal' });
   const [paymentMethod, setPaymentMethod] = useState('COD');
-
   const isOnlineMethod = ONLINE_METHODS.includes(paymentMethod);
 
   const detectLocation = async () => {
@@ -79,14 +74,11 @@ export default function CheckoutPage() {
     setStep(2);
   };
 
-  const handlePaymentChange = (val) => {
-    setPaymentMethod(val);
-    setPaymentConfirmed(false);
-  };
+  const handlePaymentChange = (val) => { setPaymentMethod(val); setPaymentConfirmed(false); };
 
   const placeOrder = async () => {
     if (isOnlineMethod && !paymentConfirmed)
-      return toast.error('Please confirm you have completed the payment before placing the order.');
+      return toast.error('Please confirm you have completed the payment.');
     setLoading(true);
     try {
       const orderData = {
@@ -111,41 +103,33 @@ export default function CheckoutPage() {
   };
 
   const PAYMENT_METHODS = [
-    { value: 'COD',        label: '💵 Cash on Delivery',          desc: 'Pay in cash when your order arrives',                  color: 'green'  },
-    { value: 'eSewa',      label: '🟢 eSewa',                     desc: 'Pay via eSewa digital wallet',                         color: 'green'  },
-    { value: 'FonePay',    label: '🔵 FonePay',                   desc: 'Scan QR with any Nepali bank app',                     color: 'blue'   },
-    { value: 'ConnectIPS', label: '🏦 ConnectIPS',                desc: 'All Nepali banks — Nabil, NIC Asia, Everest & more',   color: 'indigo' },
-    { value: 'IMEPay',     label: '🟠 IME Pay',                   desc: 'Pay via IME Pay wallet',                               color: 'orange' },
-    { value: 'Khalti',     label: '🟣 Khalti',                    desc: 'Pay via Khalti digital wallet',                        color: 'purple' },
-    { value: 'NetBanking', label: '🏛️ Net Banking',               desc: 'Direct bank transfer — all Nepali banks',              color: 'gray'   },
-    { value: 'Stripe',     label: '💳 International Card (Stripe)', desc: 'Visa / Mastercard — secure international payment',   color: 'blue'   },
+    { value: 'COD',        label: '💵 Cash on Delivery', desc: 'Pay in cash when your order arrives' },
+    { value: 'eSewa',      label: '🟢 eSewa',            desc: 'Pay via eSewa digital wallet'        },
+    { value: 'FonePay',    label: '🔵 FonePay',          desc: 'Scan QR with any Nepali bank app'    },
+    { value: 'IMEPay',     label: '🟠 IME Pay',          desc: 'Pay via IME Pay wallet'              },
+    { value: 'Khalti',     label: '🟣 Khalti',           desc: 'Pay via Khalti digital wallet'       },
+    { value: 'NetBanking', label: '🏛️ Net Banking',      desc: 'Direct bank transfer — all Nepali banks' },
   ];
 
-  // Payment instruction boxes
   const PaymentInstructions = () => {
     const amt = `NPR ${grandTotal}`;
     const id = '9844127675';
     if (paymentMethod === 'eSewa') return (
       <div className="p-4 rounded-lg border border-dashed border-green-500 bg-green-50 dark:bg-green-900/20 text-sm space-y-1">
         <p className="font-semibold text-green-700 dark:text-green-300">🟢 eSewa Payment Steps</p>
-        <p>1. Open <strong>eSewa</strong> app on your phone</p>
-        <p>2. Tap <strong>Send Money</strong></p>
-        <p>3. Enter eSewa ID: <span className="font-mono font-bold text-green-600">{id}</span></p>
-        <p>4. Enter Amount: <strong>{amt}</strong></p>
-        <p>5. Complete payment, then check the box below</p>
+        <p>1. Open <strong>eSewa</strong> app → Tap <strong>Send Money</strong></p>
+        <p>2. eSewa ID: <span className="font-mono font-bold text-green-600">{id}</span></p>
+        <p>3. Amount: <strong>{amt}</strong> → Complete payment</p>
       </div>
     );
     if (paymentMethod === 'FonePay') return (
       <div className="p-4 rounded-lg border border-dashed border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-sm space-y-2">
-        <div className="flex items-center justify-center gap-2 mb-1">
-          <span className="text-lg font-bold text-blue-700 dark:text-blue-300">fone</span>
+        <div className="flex items-center justify-center gap-2">
+          <span className="text-base font-bold text-blue-700 dark:text-blue-300">fone</span>
           <span className="bg-red-600 text-white text-xs font-bold px-1.5 py-0.5 rounded">pay</span>
         </div>
-        <p className="text-center text-xs text-gray-500 dark:text-gray-400">नेपाल राष्ट्र बैंकबाट अनुमित प्राप्त</p>
-        <p className="font-semibold text-blue-700 dark:text-blue-300 text-center">🔵 Scan to Pay via FonePay</p>
-        <p className="text-center text-gray-600 dark:text-gray-300 text-xs">Open your bank app → Scan QR → Pay <strong>NPR {grandTotal}</strong></p>
-
-        {/* Real FonePay QR image */}
+        <p className="text-center text-xs text-gray-500">नेपाल राष्ट्र बैंकबाट अनुमित प्राप्त</p>
+        <p className="text-center text-gray-600 dark:text-gray-300 text-xs">Open your bank app → Scan QR → Pay <strong>{amt}</strong></p>
         <div className="flex justify-center">
           <div className="bg-white p-3 rounded-xl border-2 border-blue-200 shadow">
             <img
@@ -153,49 +137,34 @@ export default function CheckoutPage() {
               alt="FonePay QR - Ambe Departmental Store"
               className="w-48 h-48 object-contain"
               onError={(e) => {
-                // Fallback to generated QR if image not found
                 e.target.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent('2222010004189889')}`;
               }}
             />
           </div>
         </div>
-
-        <div className="text-center space-y-0.5 mt-1">
-          <p className="font-bold text-gray-800 dark:text-gray-100">AMBE DEPARTMENTAL STORE</p>
+        <div className="text-center space-y-0.5">
+          <p className="font-bold text-gray-800 dark:text-gray-100 text-sm">AMBE DEPARTMENTAL STORE</p>
           <p className="text-xs text-gray-500">Terminal: 2222010004189889</p>
           <p className="text-xs text-gray-500">Address: SIMARA BRANCH</p>
-          <p className="text-sm font-semibold text-blue-600 dark:text-blue-400 mt-1">Amount: NPR {grandTotal}</p>
+          <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">Amount: {amt}</p>
         </div>
-
         <p className="text-xs text-gray-500 text-center">Supported: NIC Asia, Nabil, Everest, Himalayan, Laxmi, Sanima, Global IME & all Nepali banks</p>
-      </div>
-    );
-    if (paymentMethod === 'ConnectIPS') return (
-      <div className="p-4 rounded-lg border border-dashed border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 text-sm space-y-1">
-        <p className="font-semibold text-indigo-700 dark:text-indigo-300">🏦 ConnectIPS Steps</p>
-        <p>1. Go to <strong>connectips.com</strong> or open your bank's app</p>
-        <p>2. Fund Transfer → Merchant Payment</p>
-        <p>3. Merchant ID: <span className="font-mono font-bold">AMBESTORE</span></p>
-        <p>4. Amount: <strong>{amt}</strong></p>
-        <p className="text-xs text-gray-500">All 16+ Nepali banks supported</p>
       </div>
     );
     if (paymentMethod === 'IMEPay') return (
       <div className="p-4 rounded-lg border border-dashed border-orange-500 bg-orange-50 dark:bg-orange-900/20 text-sm space-y-1">
         <p className="font-semibold text-orange-700 dark:text-orange-300">🟠 IME Pay Steps</p>
-        <p>1. Open <strong>IME Pay</strong> app</p>
-        <p>2. Tap <strong>Send Money</strong></p>
-        <p>3. IME Pay ID: <span className="font-mono font-bold text-orange-600">{id}</span></p>
-        <p>4. Amount: <strong>{amt}</strong> → Complete payment</p>
+        <p>1. Open <strong>IME Pay</strong> app → Tap <strong>Send Money</strong></p>
+        <p>2. IME Pay ID: <span className="font-mono font-bold text-orange-600">{id}</span></p>
+        <p>3. Amount: <strong>{amt}</strong> → Complete payment</p>
       </div>
     );
     if (paymentMethod === 'Khalti') return (
       <div className="p-4 rounded-lg border border-dashed border-purple-500 bg-purple-50 dark:bg-purple-900/20 text-sm space-y-1">
         <p className="font-semibold text-purple-700 dark:text-purple-300">🟣 Khalti Steps</p>
-        <p>1. Open <strong>Khalti</strong> app</p>
-        <p>2. Tap <strong>Send Money</strong></p>
-        <p>3. Khalti ID: <span className="font-mono font-bold text-purple-600">{id}</span></p>
-        <p>4. Amount: <strong>{amt}</strong> → Complete payment</p>
+        <p>1. Open <strong>Khalti</strong> app → Tap <strong>Send Money</strong></p>
+        <p>2. Khalti ID: <span className="font-mono font-bold text-purple-600">{id}</span></p>
+        <p>3. Amount: <strong>{amt}</strong> → Complete payment</p>
       </div>
     );
     if (paymentMethod === 'NetBanking') return (
@@ -205,14 +174,7 @@ export default function CheckoutPage() {
         <p>Account No: <span className="font-mono font-bold">1234567890</span></p>
         <p>Bank: <strong>Nabil Bank / Nepal Bank</strong></p>
         <p>Amount: <strong>{amt}</strong></p>
-        <p className="text-xs text-yellow-600 dark:text-yellow-400">After transfer, send screenshot to <strong>+977 984 4127675</strong> on WhatsApp for verification.</p>
-      </div>
-    );
-    if (paymentMethod === 'Stripe') return (
-      <div className="p-4 rounded-lg border border-dashed border-blue-400 bg-blue-50 dark:bg-blue-900/20 text-sm space-y-1">
-        <p className="font-semibold text-blue-700 dark:text-blue-300">💳 Stripe Card Payment</p>
-        <p>Amount: <strong>{amt}</strong></p>
-        <p className="text-xs text-gray-500">You will be redirected to Stripe's secure payment page after placing the order.</p>
+        <p className="text-xs text-yellow-600 dark:text-yellow-400">After transfer, send screenshot to <strong>+977 984 4127675</strong> on WhatsApp.</p>
       </div>
     );
     return null;
@@ -222,7 +184,7 @@ export default function CheckoutPage() {
     <div className="max-w-4xl mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-6">Checkout</h1>
 
-      {/* Steps indicator */}
+      {/* Steps */}
       <div className="flex items-center gap-4 mb-8">
         {[{ n: 1, label: 'Address' }, { n: 2, label: 'Payment' }, { n: 3, label: 'Review' }].map(({ n, label }) => (
           <div key={n} className="flex items-center gap-2">
@@ -297,10 +259,7 @@ export default function CheckoutPage() {
                   </label>
                 ))}
               </div>
-
-              {/* Show payment instructions for online methods */}
               {isOnlineMethod && <PaymentInstructions />}
-
               <div className="flex gap-3 mt-2">
                 <button onClick={() => setStep(1)} className="btn-outline flex-1">Back</button>
                 <button onClick={() => setStep(3)} className="btn-primary flex-1">Review Order</button>
@@ -325,26 +284,21 @@ export default function CheckoutPage() {
                   </div>
                 ))}
               </div>
-
               <div className="border-t dark:border-gray-600 pt-3 text-sm space-y-1 mb-4">
                 <p><strong>Address:</strong> {address.street}, {address.city}, {address.state} - {address.pincode}, Nepal</p>
                 <p><strong>Payment:</strong> {paymentMethod}</p>
                 {appliedCoupon && <p className="text-green-600"><strong>Coupon:</strong> {appliedCoupon} (-NPR {discount})</p>}
               </div>
 
-              {/* Show instructions again on review + confirmation checkbox */}
               {isOnlineMethod && (
                 <div className="mb-4 space-y-3">
                   <PaymentInstructions />
                   <label className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer border-primary bg-green-50 dark:bg-green-900/20">
-                    <input
-                      type="checkbox"
-                      checked={paymentConfirmed}
+                    <input type="checkbox" checked={paymentConfirmed}
                       onChange={(e) => setPaymentConfirmed(e.target.checked)}
-                      className="mt-0.5 w-4 h-4 accent-green-600"
-                    />
+                      className="mt-0.5 w-4 h-4 accent-green-600" />
                     <span className="text-sm font-medium text-green-700 dark:text-green-300">
-                      ✅ I confirm that I have completed the payment of <strong>NPR {grandTotal}</strong> via <strong>{paymentMethod}</strong>
+                      ✅ I confirm I have completed payment of <strong>NPR {grandTotal}</strong> via <strong>{paymentMethod}</strong>
                     </span>
                   </label>
                 </div>
@@ -352,18 +306,14 @@ export default function CheckoutPage() {
 
               <div className="flex gap-3">
                 <button onClick={() => setStep(2)} className="btn-outline flex-1">Back</button>
-                <button
-                  onClick={placeOrder}
-                  disabled={loading || (isOnlineMethod && !paymentConfirmed)}
-                  className="btn-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
+                <button onClick={placeOrder} disabled={loading || (isOnlineMethod && !paymentConfirmed)}
+                  className="btn-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed">
                   {loading ? 'Placing Order...' : isOnlineMethod ? 'Confirm & Place Order' : 'Place Order'}
                 </button>
               </div>
-
               {isOnlineMethod && !paymentConfirmed && (
                 <p className="text-xs text-center text-yellow-600 dark:text-yellow-400 mt-2">
-                  ⚠️ Please complete payment and check the confirmation box above to place your order.
+                  ⚠️ Complete payment first, then check the box above to place your order.
                 </p>
               )}
             </div>
@@ -389,7 +339,6 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          {/* Coupon */}
           <div className="card p-4">
             <h3 className="font-semibold text-sm mb-2 flex items-center gap-1"><FiTag size={14} /> Promo Code</h3>
             {appliedCoupon ? (
