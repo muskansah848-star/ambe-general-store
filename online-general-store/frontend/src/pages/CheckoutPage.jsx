@@ -1,31 +1,20 @@
 import { useState } from 'react';
 import { useCart } from '../context/CartContext';
-import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
-import { FiMapPin, FiCreditCard, FiTruck, FiNavigation, FiTag, FiX } from 'react-icons/fi';
+import { FiMapPin, FiCreditCard, FiNavigation, FiTag, FiX } from 'react-icons/fi';
 
-// Load Razorpay script dynamically
-const loadRazorpay = () =>
-  new Promise((resolve) => {
-    if (window.Razorpay) return resolve(true);
-    const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
-    document.body.appendChild(script);
-  });
+const ONLINE_METHODS = ['eSewa', 'FonePay'];
 
 export default function CheckoutPage() {
   const { cart, totalPrice, dispatch } = useCart();
-  const { user } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [locLoading, setLocLoading] = useState(false);
+  const [paymentConfirmed, setPaymentConfirmed] = useState(false);
 
-  // Coupon state
   const [couponCode, setCouponCode] = useState('');
   const [couponLoading, setCouponLoading] = useState(false);
   const [discount, setDiscount] = useState(0);
@@ -35,31 +24,17 @@ export default function CheckoutPage() {
   const tax = Math.round(totalPrice * 0.05);
   const grandTotal = totalPrice + shipping + tax - discount;
 
-  // UPI QR — generate a UPI deep link QR
-  const upiId = import.meta.env.VITE_UPI_ID || 'store@upi';
-  const upiQRUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
-    `upi://pay?pa=${upiId}&pn=GeneralStore&am=${grandTotal}&cu=INR`
-  )}`;
-
-  const [address, setAddress] = useState({
-    street: user?.address?.street || '',
-    city: user?.address?.city || '',
-    state: user?.address?.state || '',
-    pincode: user?.address?.pincode || '',
-    country: 'Nepal',
-  });
+  const [address, setAddress] = useState({ street: '', city: '', state: '', pincode: '', country: 'Nepal' });
   const [paymentMethod, setPaymentMethod] = useState('COD');
+  const isOnlineMethod = ONLINE_METHODS.includes(paymentMethod);
 
-  // Auto-fill address via geolocation
   const detectLocation = async () => {
     if (!navigator.geolocation) return toast.error('Geolocation not supported');
     setLocLoading(true);
     navigator.geolocation.getCurrentPosition(
       async ({ coords }) => {
         try {
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${coords.latitude}&lon=${coords.longitude}&format=json`
-          );
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${coords.latitude}&lon=${coords.longitude}&format=json`);
           const data = await res.json();
           const addr = data.address || {};
           setAddress((prev) => ({
@@ -70,40 +45,27 @@ export default function CheckoutPage() {
             pincode: addr.postcode || prev.pincode,
           }));
           toast.success('Location detected!');
-        } catch {
-          toast.error('Could not fetch address details');
-        } finally {
-          setLocLoading(false);
-        }
+        } catch { toast.error('Could not fetch address'); }
+        finally { setLocLoading(false); }
       },
       () => { toast.error('Location access denied'); setLocLoading(false); }
     );
   };
 
-  // Apply coupon
   const applyCoupon = async () => {
     if (!couponCode.trim()) return;
     setCouponLoading(true);
     try {
-      const { data } = await api.post('/payment/coupon/apply', {
-        code: couponCode.trim(),
-        cartTotal: totalPrice,
-      });
+      const { data } = await api.post('/payment/coupon/apply', { code: couponCode.trim(), cartTotal: totalPrice });
       setDiscount(data.discount);
       setAppliedCoupon(data.code);
-      toast.success(`Coupon applied! You save ₹${data.discount}`);
+      toast.success(`Coupon applied! You save NPR ${data.discount}`);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Invalid coupon');
-    } finally {
-      setCouponLoading(false);
-    }
+    } finally { setCouponLoading(false); }
   };
 
-  const removeCoupon = () => {
-    setDiscount(0);
-    setAppliedCoupon('');
-    setCouponCode('');
-  };
+  const removeCoupon = () => { setDiscount(0); setAppliedCoupon(''); setCouponCode(''); };
 
   const handleAddressSubmit = (e) => {
     e.preventDefault();
@@ -112,72 +74,85 @@ export default function CheckoutPage() {
     setStep(2);
   };
 
-  const handleRazorpay = async () => {
-    setLoading(true);
-    const loaded = await loadRazorpay();
-    if (!loaded) { toast.error('Razorpay failed to load'); setLoading(false); return; }
-    try {
-      const { data } = await api.post('/payment/razorpay/create-order', { amount: grandTotal });
-      const options = {
-        key: data.key,
-        amount: data.amount,
-        currency: data.currency,
-        name: 'Ambe General Store',
-        description: 'Order Payment',
-        order_id: data.orderId,
-        handler: async (response) => {
-          try {
-            await api.post('/payment/razorpay/verify', response);
-            await placeOrder('Razorpay', response.razorpay_payment_id);
-          } catch {
-            toast.error('Payment verification failed');
-          }
-        },
-        prefill: { name: user?.name, email: user?.email },
-        theme: { color: '#16a34a' },
-      };
-      new window.Razorpay(options).open();
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Razorpay error');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const handlePaymentChange = (val) => { setPaymentMethod(val); setPaymentConfirmed(false); };
 
-  const placeOrder = async (method = paymentMethod, paymentId = null) => {
+  const placeOrder = async () => {
+    if (isOnlineMethod && !paymentConfirmed)
+      return toast.error('Please confirm you have completed the payment.');
     setLoading(true);
     try {
       const orderData = {
-        orderItems: cart.map((i) => ({
-          product: i._id, name: i.name, image: i.image, price: i.price, quantity: i.qty,
-        })),
+        orderItems: cart.map((i) => ({ product: i._id, name: i.name, image: i.image, price: i.price, quantity: i.qty })),
         shippingAddress: address,
-        paymentMethod: method,
+        paymentMethod,
         itemsPrice: totalPrice,
         shippingPrice: shipping,
         taxPrice: tax,
         totalPrice: grandTotal,
         coupon: appliedCoupon,
         discountAmount: discount,
-        ...(paymentId && { paymentResult: { id: paymentId, status: 'paid' } }),
+        ...(isOnlineMethod && paymentConfirmed && { paymentResult: { id: `manual_${Date.now()}`, status: 'pending_verification' } }),
       };
       const { data } = await api.post('/orders', orderData);
       dispatch({ type: 'CLEAR' });
-      toast.success('Order placed successfully!');
+      toast.success('Order placed! We will verify your payment shortly.');
       navigate(`/order/${data._id}`);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to place order');
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   const PAYMENT_METHODS = [
-    { value: 'COD',      label: '💵 Cash on Delivery',                   desc: 'Pay when your order arrives' },
-    { value: 'Razorpay', label: '🇮🇳 Razorpay (UPI / Cards / NetBanking)', desc: 'Pay securely via Razorpay' },
-    { value: 'UPI',      label: '📱 UPI / QR Code',                       desc: 'Scan QR or pay via UPI ID' },
-    { value: 'Stripe',   label: '💳 Credit / Debit Card (Stripe)',         desc: 'Secure international payment' },
+    { value: 'COD',     label: '💵 Cash on Delivery', desc: 'Pay in cash when your order arrives' },
+    { value: 'eSewa',   label: '🟢 eSewa',            desc: 'Pay via eSewa digital wallet'        },
+    { value: 'FonePay', label: '🔵 FonePay',          desc: 'Scan QR with any Nepali bank app'    },
   ];
+
+  const PaymentInstructions = () => {
+    const amt = `NPR ${grandTotal}`;
+    const id = '9804242877';
+    if (paymentMethod === 'eSewa') return (
+      <div className="p-4 rounded-lg border border-dashed border-green-500 bg-green-50 dark:bg-green-900/20 text-sm space-y-1">
+        <p className="font-semibold text-green-700 dark:text-green-300">🟢 eSewa Payment Steps</p>
+        <p>1. Open <strong>eSewa</strong> app → Tap <strong>Send Money</strong></p>
+        <p>2. eSewa ID: <span className="font-mono font-bold text-green-600">{id}</span></p>
+        <p>3. Amount: <strong>{amt}</strong> → Complete payment</p>
+      </div>
+    );
+    if (paymentMethod === 'FonePay') return (
+      <div className="p-4 rounded-lg border border-dashed border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-sm space-y-2">
+        <div className="flex items-center justify-center gap-2">
+          <span className="text-base font-bold text-blue-700 dark:text-blue-300">fone</span>
+          <span className="bg-red-600 text-white text-xs font-bold px-1.5 py-0.5 rounded">pay</span>
+        </div>
+        <p className="text-center text-xs text-gray-500">नेपाल राष्ट्र बैंकबाट अनुमित प्राप्त</p>
+        <p className="text-center text-gray-600 dark:text-gray-300 text-xs">Open your bank app → Scan QR → Pay <strong>{amt}</strong></p>
+        <div className="flex justify-center">
+          <div className="bg-white p-3 rounded-xl border-2 border-blue-200 shadow">
+            <img
+              src="/fonepay-qr.png"
+              alt="FonePay QR - Ambe Departmental Store"
+              className="w-48 h-48 object-contain"
+              onError={(e) => {
+                e.target.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent('2222010004189889')}`;
+              }}
+            />
+          </div>
+        </div>
+        <div className="text-center space-y-0.5">
+          <p className="font-bold text-gray-800 dark:text-gray-100 text-sm">AMBE DEPARTMENTAL STORE</p>
+          <p className="text-xs text-gray-500">Terminal: 2222010004189889</p>
+          <p className="text-xs text-gray-500">Address: SIMARA BRANCH</p>
+          <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">Amount: {amt}</p>
+        </div>
+        <p className="text-xs text-gray-500 text-center">Supported: NIC Asia, Nabil, Everest, Himalayan, Laxmi, Sanima, Global IME & all Nepali banks</p>
+      </div>
+    );
+    if (paymentMethod === 'NetBanking') return null;
+    if (paymentMethod === 'IMEPay') return null;
+    if (paymentMethod === 'Khalti') return null;
+    return null;
+  };
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
@@ -185,19 +160,13 @@ export default function CheckoutPage() {
 
       {/* Steps */}
       <div className="flex items-center gap-4 mb-8">
-        {[
-          { n: 1, label: 'Address', icon: FiMapPin },
-          { n: 2, label: 'Payment', icon: FiCreditCard },
-          { n: 3, label: 'Review',  icon: FiTruck },
-        ].map(({ n, label }) => (
+        {[{ n: 1, label: 'Address' }, { n: 2, label: 'Payment' }, { n: 3, label: 'Review' }].map(({ n, label }) => (
           <div key={n} className="flex items-center gap-2">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold
               ${step >= n ? 'bg-primary text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-500'}`}>
               {step > n ? '✓' : n}
             </div>
-            <span className={`text-sm hidden sm:block ${step >= n ? 'text-primary font-medium' : 'text-gray-400'}`}>
-              {label}
-            </span>
+            <span className={`text-sm hidden sm:block ${step >= n ? 'text-primary font-medium' : 'text-gray-400'}`}>{label}</span>
             {n < 3 && <div className={`w-8 h-0.5 ${step > n ? 'bg-primary' : 'bg-gray-200 dark:bg-gray-700'}`} />}
           </div>
         ))}
@@ -206,7 +175,7 @@ export default function CheckoutPage() {
       <div className="grid md:grid-cols-3 gap-8">
         <div className="md:col-span-2">
 
-          {/* ── Step 1: Address ── */}
+          {/* Step 1 — Address */}
           {step === 1 && (
             <form onSubmit={handleAddressSubmit} className="card p-6 space-y-4">
               <div className="flex items-center justify-between">
@@ -236,50 +205,35 @@ export default function CheckoutPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <input value={address.pincode} onChange={(e) => setAddress({ ...address, pincode: e.target.value })}
-                  placeholder="Postal Code (e.g. 44600)" className="input-field" required />
+                  placeholder="Postal Code (e.g. 44300)" className="input-field" required />
                 <input value={address.country} className="input-field bg-gray-50 dark:bg-gray-700" readOnly />
               </div>
               <button type="submit" className="btn-primary w-full">Continue to Payment</button>
             </form>
           )}
 
-          {/* ── Step 2: Payment ── */}
+          {/* Step 2 — Payment */}
           {step === 2 && (
             <div className="card p-6 space-y-4">
               <h2 className="font-bold text-lg flex items-center gap-2"><FiCreditCard /> Payment Method</h2>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {PAYMENT_METHODS.map((m) => (
                   <label key={m.value}
-                    className={`flex items-start gap-3 p-4 border rounded-lg cursor-pointer transition
+                    className={`flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition
                       ${paymentMethod === m.value
                         ? 'border-primary bg-green-50 dark:bg-green-900/20'
-                        : 'border-gray-200 dark:border-gray-600'}`}>
+                        : 'border-gray-200 dark:border-gray-600 hover:border-gray-300'}`}>
                     <input type="radio" name="payment" value={m.value}
                       checked={paymentMethod === m.value}
-                      onChange={() => setPaymentMethod(m.value)} className="mt-1" />
+                      onChange={() => handlePaymentChange(m.value)} className="mt-1" />
                     <div>
-                      <p className="font-medium">{m.label}</p>
-                      <p className="text-sm text-gray-400">{m.desc}</p>
+                      <p className="font-medium text-sm">{m.label}</p>
+                      <p className="text-xs text-gray-400">{m.desc}</p>
                     </div>
                   </label>
                 ))}
               </div>
-
-              {/* UPI QR code shown inline when UPI selected */}
-              {paymentMethod === 'UPI' && (
-                <div className="flex flex-col items-center gap-2 p-4 border rounded-lg border-dashed border-primary">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                    Scan with any UPI app (GPay, PhonePe, Paytm)
-                  </p>
-                  <img src={upiQRUrl} alt="UPI QR Code" className="w-44 h-44 rounded-lg" />
-                  <p className="text-xs text-gray-400">UPI ID: <span className="font-mono text-primary">{upiId}</span></p>
-                  <p className="text-xs text-gray-400">Amount: <strong>₹{grandTotal}</strong></p>
-                  <p className="text-xs text-yellow-600 dark:text-yellow-400 text-center">
-                    After payment, click "Review Order" and place your order.
-                  </p>
-                </div>
-              )}
-
+              {isOnlineMethod && <PaymentInstructions />}
               <div className="flex gap-3 mt-2">
                 <button onClick={() => setStep(1)} className="btn-outline flex-1">Back</button>
                 <button onClick={() => setStep(3)} className="btn-primary flex-1">Review Order</button>
@@ -287,80 +241,90 @@ export default function CheckoutPage() {
             </div>
           )}
 
-          {/* ── Step 3: Review ── */}
+          {/* Step 3 — Review */}
           {step === 3 && (
             <div className="card p-6">
               <h2 className="font-bold text-lg mb-4">Review Your Order</h2>
               <div className="space-y-3 mb-4">
                 {cart.map((item) => (
                   <div key={item._id} className="flex items-center gap-3">
-                    <img src={item.image || 'https://via.placeholder.com/50'} alt={item.name}
+                    <img src={item.image || 'https://placehold.co/50x50'} alt={item.name}
                       className="w-12 h-12 object-cover rounded" />
                     <div className="flex-1">
                       <p className="text-sm font-medium">{item.name}</p>
                       <p className="text-xs text-gray-400">Qty: {item.qty}</p>
                     </div>
-                    <span className="font-semibold">₹{item.price * item.qty}</span>
+                    <span className="font-semibold">NPR {item.price * item.qty}</span>
                   </div>
                 ))}
               </div>
               <div className="border-t dark:border-gray-600 pt-3 text-sm space-y-1 mb-4">
-                <p><strong>Address:</strong> {address.street}, {address.city}, {address.state} - {address.pincode}</p>
+                <p><strong>Address:</strong> {address.street}, {address.city}, {address.state} - {address.pincode}, Nepal</p>
                 <p><strong>Payment:</strong> {paymentMethod}</p>
-                {appliedCoupon && <p className="text-green-600"><strong>Coupon:</strong> {appliedCoupon} (-₹{discount})</p>}
+                {appliedCoupon && <p className="text-green-600"><strong>Coupon:</strong> {appliedCoupon} (-NPR {discount})</p>}
               </div>
+
+              {isOnlineMethod && (
+                <div className="mb-4 space-y-3">
+                  <PaymentInstructions />
+                  <label className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer border-primary bg-green-50 dark:bg-green-900/20">
+                    <input type="checkbox" checked={paymentConfirmed}
+                      onChange={(e) => setPaymentConfirmed(e.target.checked)}
+                      className="mt-0.5 w-4 h-4 accent-green-600" />
+                    <span className="text-sm font-medium text-green-700 dark:text-green-300">
+                      ✅ I confirm I have completed payment of <strong>NPR {grandTotal}</strong> via <strong>{paymentMethod}</strong>
+                    </span>
+                  </label>
+                </div>
+              )}
+
               <div className="flex gap-3">
                 <button onClick={() => setStep(2)} className="btn-outline flex-1">Back</button>
-                {paymentMethod === 'Razorpay' ? (
-                  <button onClick={handleRazorpay} disabled={loading} className="btn-primary flex-1">
-                    {loading ? 'Processing...' : 'Pay with Razorpay'}
-                  </button>
-                ) : (
-                  <button onClick={() => placeOrder()} disabled={loading} className="btn-primary flex-1">
-                    {loading ? 'Placing Order...' : 'Place Order'}
-                  </button>
-                )}
+                <button onClick={placeOrder} disabled={loading || (isOnlineMethod && !paymentConfirmed)}
+                  className="btn-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed">
+                  {loading ? 'Placing Order...' : isOnlineMethod ? 'Confirm & Place Order' : 'Place Order'}
+                </button>
               </div>
+              {isOnlineMethod && !paymentConfirmed && (
+                <p className="text-xs text-center text-yellow-600 dark:text-yellow-400 mt-2">
+                  ⚠️ Complete payment first, then check the box above to place your order.
+                </p>
+              )}
             </div>
           )}
         </div>
 
-        {/* ── Order Summary ── */}
+        {/* Order Summary */}
         <div className="space-y-4">
           <div className="card p-5">
             <h3 className="font-bold mb-3">Summary</h3>
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between"><span>Items ({cart.length})</span><span>₹{totalPrice}</span></div>
-              <div className="flex justify-between"><span>Shipping</span><span>{shipping === 0 ? 'Free' : `₹${shipping}`}</span></div>
-              <div className="flex justify-between"><span>Tax (5%)</span><span>₹{tax}</span></div>
+              <div className="flex justify-between"><span>Items ({cart.length})</span><span>NPR {totalPrice}</span></div>
+              <div className="flex justify-between"><span>Shipping</span><span>{shipping === 0 ? 'Free' : `NPR ${shipping}`}</span></div>
+              <div className="flex justify-between"><span>Tax (5%)</span><span>NPR {tax}</span></div>
               {discount > 0 && (
                 <div className="flex justify-between text-green-600">
-                  <span>Discount ({appliedCoupon})</span><span>-₹{discount}</span>
+                  <span>Discount ({appliedCoupon})</span><span>-NPR {discount}</span>
                 </div>
               )}
             </div>
             <div className="border-t dark:border-gray-600 mt-3 pt-3 flex justify-between font-bold">
-              <span>Total</span><span className="text-primary">₹{grandTotal}</span>
+              <span>Total</span><span className="text-primary">NPR {grandTotal}</span>
             </div>
           </div>
 
-          {/* Coupon box */}
           <div className="card p-4">
             <h3 className="font-semibold text-sm mb-2 flex items-center gap-1"><FiTag size={14} /> Promo Code</h3>
             {appliedCoupon ? (
               <div className="flex items-center justify-between bg-green-50 dark:bg-green-900/20 border border-green-300 rounded-lg px-3 py-2">
-                <span className="text-sm font-mono text-green-700 dark:text-green-400">{appliedCoupon} — -₹{discount}</span>
+                <span className="text-sm font-mono text-green-700 dark:text-green-400">{appliedCoupon} — -NPR {discount}</span>
                 <button onClick={removeCoupon} className="text-gray-400 hover:text-red-500"><FiX size={14} /></button>
               </div>
             ) : (
               <div className="flex gap-2">
-                <input
-                  value={couponCode}
-                  onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                <input value={couponCode} onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                   onKeyDown={(e) => e.key === 'Enter' && applyCoupon()}
-                  placeholder="Enter code"
-                  className="input-field text-sm flex-1"
-                />
+                  placeholder="Enter code" className="input-field text-sm flex-1" />
                 <button onClick={applyCoupon} disabled={couponLoading}
                   className="btn-primary text-sm px-3 disabled:opacity-50">
                   {couponLoading ? '...' : 'Apply'}
