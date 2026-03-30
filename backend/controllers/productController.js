@@ -167,3 +167,52 @@ exports.getLowStock = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+// @desc AI-based recommendations — based on user's past order categories
+exports.getRecommendations = async (req, res) => {
+  try {
+    const Order = require('../models/Order');
+    // Get user's past orders
+    const orders = await Order.find({ user: req.user._id }).populate('orderItems.product', 'category');
+    
+    // Collect categories from past purchases
+    const categoryCounts = {};
+    orders.forEach((order) => {
+      order.orderItems.forEach((item) => {
+        const cat = item.product?.category;
+        if (cat) categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+      });
+    });
+
+    // Sort categories by frequency
+    const topCategories = Object.entries(categoryCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([cat]) => cat);
+
+    // Get purchased product IDs to exclude
+    const purchasedIds = orders.flatMap((o) => o.orderItems.map((i) => i.product?._id)).filter(Boolean);
+
+    let recommended = [];
+    if (topCategories.length > 0) {
+      recommended = await Product.find({
+        category: { $in: topCategories },
+        _id: { $nin: purchasedIds },
+        stock: { $gt: 0 },
+      }).sort({ rating: -1 }).limit(8);
+    }
+
+    // Fallback: top-rated products if no history
+    if (recommended.length < 4) {
+      const fallback = await Product.find({ stock: { $gt: 0 } })
+        .sort({ rating: -1 })
+        .limit(8);
+      const ids = new Set(recommended.map((p) => p._id.toString()));
+      recommended = [...recommended, ...fallback.filter((p) => !ids.has(p._id.toString()))].slice(0, 8);
+    }
+
+    res.json(recommended);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error fetching recommendations' });
+  }
+};

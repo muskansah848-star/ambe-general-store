@@ -5,15 +5,20 @@ import { useTheme } from '../context/ThemeContext';
 import {
   FiGrid, FiPackage, FiShoppingBag, FiLogOut,
   FiMenu, FiSun, FiMoon, FiHome, FiPlusCircle, FiUser,
+  FiTag, FiRefreshCw, FiTrendingUp,
 } from 'react-icons/fi';
 import { MdStorefront } from 'react-icons/md';
 import toast from 'react-hot-toast';
 
 const NAV = [
   { to: '/admin',              label: 'Dashboard',   icon: FiGrid        },
+  { to: '/admin/analytics',    label: 'Analytics',   icon: FiTrendingUp  },
   { to: '/admin/products',     label: 'Products',    icon: FiPackage     },
   { to: '/admin/products/new', label: 'Add Product', icon: FiPlusCircle  },
   { to: '/admin/orders',       label: 'Orders',      icon: FiShoppingBag },
+  { to: '/admin/users',        label: 'Users',       icon: FiUser        },
+  { to: '/admin/coupons',      label: 'Coupons',     icon: FiTag         },
+  { to: '/admin/refunds',      label: 'Refunds',     icon: FiRefreshCw   },
 ];
 
 // Defined OUTSIDE AdminLayout so it is never re-created on each render
@@ -26,7 +31,7 @@ function Sidebar({ user, location, onClose, onLogout }) {
           <MdStorefront size={26} />
           <span>Admin Panel</span>
         </Link>
-        <p className="text-xs text-gray-400 mt-1">Online General Store</p>
+        <p className="text-xs text-gray-400 mt-1">Ambe General Store</p>
       </div>
 
       {/* Nav links */}

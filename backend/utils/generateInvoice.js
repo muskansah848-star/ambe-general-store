@@ -8,7 +8,7 @@ const generateInvoice = (order, user, res) => {
   doc.pipe(res);
 
   // Header
-  doc.fontSize(20).text('Online General Store', { align: 'center' });
+  doc.fontSize(20).text('Ambe General Store', { align: 'center' });
   doc.fontSize(12).text('Invoice', { align: 'center' });
   doc.moveDown();
 

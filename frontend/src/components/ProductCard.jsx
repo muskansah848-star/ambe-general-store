@@ -1,7 +1,10 @@
 import { Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
-import { FiShoppingCart, FiStar } from 'react-icons/fi';
+import { useAuth } from '../context/AuthContext';
+import { FiShoppingCart, FiStar, FiHeart } from 'react-icons/fi';
 import { MdOutlineLocalOffer } from 'react-icons/md';
+import { useState } from 'react';
+import api from '../utils/api';
 import toast from 'react-hot-toast';
 
 const CATEGORY_COLORS = {
@@ -17,6 +20,8 @@ const CATEGORY_COLORS = {
 
 export default function ProductCard({ product }) {
   const { dispatch } = useCart();
+  const { user } = useAuth();
+  const [wishlisted, setWishlisted] = useState(false);
 
   const addToCart = (e) => {
     e.preventDefault();
@@ -24,6 +29,19 @@ export default function ProductCard({ product }) {
     if (product.stock === 0) return toast.error('Out of stock');
     dispatch({ type: 'ADD', item: product });
     toast.success(`${product.name} added to cart`, { icon: '🛒' });
+  };
+
+  const toggleWishlist = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user) return toast.error('Please login to use wishlist');
+    try {
+      const { data } = await api.post(`/wishlist/${product._id}`);
+      setWishlisted(data.added);
+      toast.success(data.added ? '❤️ Added to wishlist' : 'Removed from wishlist');
+    } catch {
+      toast.error('Failed to update wishlist');
+    }
   };
 
   const categoryColor = CATEGORY_COLORS[product.category] || CATEGORY_COLORS.Other;
@@ -69,6 +87,14 @@ export default function ProductCard({ product }) {
         <span className={`absolute top-2 right-2 text-xs font-medium px-2 py-0.5 rounded-full ${categoryColor}`}>
           {product.category}
         </span>
+
+        {/* Wishlist button */}
+        <button
+          onClick={toggleWishlist}
+          className="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-white/90 dark:bg-gray-800/90 shadow flex items-center justify-center hover:scale-110 transition-transform"
+        >
+          <FiHeart size={14} fill={wishlisted ? '#ef4444' : 'none'} className={wishlisted ? 'text-red-500' : 'text-gray-400'} />
+        </button>
       </div>
 
       {/* Body */}

@@ -36,21 +36,39 @@ function StatCard({ icon: Icon, label, value, sub, color }) {
 export default function AdminDashboard() {
   const [stats, setStats]   = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError]   = useState(false);
+  const [error, setError]   = useState('');
 
   useEffect(() => {
     api.get('/orders/admin/dashboard')
       .then(({ data }) => setStats(data))
-      .catch(() => setError(true))
+      .catch((err) => {
+        const msg = err.response?.data?.message || err.message || 'Network error';
+        const status = err.response?.status;
+        setError(`${status ? `[${status}] ` : ''}${msg}`);
+      })
       .finally(() => setLoading(false));
   }, []);
 
   return (
     <AdminLayout>
       {loading ? <Loader /> : error ? (
-        <div className="text-center py-20 text-gray-400">
-          <p className="text-lg">Failed to load dashboard data</p>
-          <button onClick={() => window.location.reload()} className="btn-primary mt-4">Retry</button>
+        <div className="text-center py-20 text-gray-400 space-y-3">
+          <div className="text-5xl">⚠️</div>
+          <p className="text-lg font-semibold text-red-500">Dashboard failed to load</p>
+          <p className="text-sm bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-4 py-2 rounded-lg inline-block font-mono">
+            {error}
+          </p>
+          <div className="text-sm text-gray-500 space-y-1 mt-2">
+            <p>Make sure the backend is running on port 5000</p>
+            <p>and you are logged in as an <strong>admin</strong> account</p>
+          </div>
+          <div className="flex gap-3 justify-center mt-4">
+            <button onClick={() => { setError(''); setLoading(true); api.get('/orders/admin/dashboard').then(({ data }) => setStats(data)).catch((err) => setError(err.response?.data?.message || err.message)).finally(() => setLoading(false)); }}
+              className="btn-primary">
+              Retry
+            </button>
+            <a href="/login" className="btn-outline">Re-login</a>
+          </div>
         </div>
       ) : (
         <div className="space-y-6">
