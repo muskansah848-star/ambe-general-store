@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
 import { MdStorefront } from 'react-icons/md';
-import { FiEye, FiEyeOff, FiUser, FiMail, FiLock, FiAlertCircle, FiCheckCircle } from 'react-icons/fi';
+import { FiEye, FiEyeOff, FiUser, FiMail, FiLock, FiAlertCircle } from 'react-icons/fi';
 
 // Defined OUTSIDE the component so it never re-mounts on re-render
 function Field({ icon: Icon, error, children }) {
@@ -29,7 +29,6 @@ export default function LoginPage() {
   const [form, setForm]         = useState({ name: '', email: '', password: '' });
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading]   = useState(false);
-  const [serverOk, setServerOk] = useState(null);
   const [errors, setErrors]     = useState({});
 
   const { login, register } = useAuth();
@@ -38,13 +37,7 @@ export default function LoginPage() {
   const from     = location.state?.from || '/';
 
   useEffect(() => {
-    api.get('/health')
-      .then(() => setServerOk(true))
-      .catch(() => {
-        // In production on Render, the health check may fail due to cold start
-        // Don't block the user — just hide the banner
-        setServerOk(null);
-      });
+    api.get('/health').catch(() => {});
   }, []);
 
   const validate = () => {
@@ -75,8 +68,7 @@ export default function LoginPage() {
       }
     } catch (err) {
       if (!err.response) {
-        toast.error('Cannot reach server. Make sure backend is running on port 5000.');
-        setServerOk(false);
+        toast.error('Cannot connect to server. Please try again in a moment.');
       } else {
         const msg = err.response?.data?.message || 'Something went wrong';
         toast.error(msg);
@@ -114,13 +106,6 @@ export default function LoginPage() {
             {isLogin ? 'Sign in to your account' : 'Create a new account'}
           </p>
         </div>
-
-        {/* Server status */}
-        {serverOk === true && (
-          <div className="mb-4 p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
-            <FiCheckCircle size={14} /> Server connected
-          </div>
-        )}
 
         {/* Tab switcher */}
         <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1 mb-6">
@@ -188,7 +173,7 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            disabled={loading || serverOk === false}
+            disabled={loading}
             className="btn-primary w-full py-3 text-base font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading
