@@ -110,7 +110,7 @@ export default function CheckoutPage() {
 
   const PaymentInstructions = () => {
     const amt = `NPR ${grandTotal}`;
-    const id = '9844127675';
+    const id = '9804242877';
     if (paymentMethod === 'eSewa') return (
       <div className="p-4 rounded-lg border border-dashed border-green-500 bg-green-50 dark:bg-green-900/20 text-sm space-y-1">
         <p className="font-semibold text-green-700 dark:text-green-300">🟢 eSewa Payment Steps</p>
