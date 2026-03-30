@@ -230,7 +230,12 @@ const products = [
 ];
 
 const seedDB = async () => {
-  await mongoose.connect(process.env.MONGO_URI);
+  const uri = process.env.MONGO_URI;
+  if (!uri || uri.includes('XXXXXX') || uri.includes('abc123')) {
+    console.error('❌ Please set a real MONGO_URI in your .env file');
+    process.exit(1);
+  }
+  await mongoose.connect(uri);
   console.log('✅ MongoDB Connected');
 
   await Order.deleteMany();
