@@ -54,6 +54,19 @@ if (!fs.existsSync(uploadsPath)) fs.mkdirSync(uploadsPath, { recursive: true });
 app.use('/uploads', express.static(uploadsPath));
 
 // -------- Routes --------
+// One-time seed route — creates admin user if not exists
+app.get('/api/seed-admin', async (req, res) => {
+  try {
+    const User = require('./models/User');
+    const exists = await User.findOne({ email: 'admin@store.com' });
+    if (exists) return res.json({ message: 'Admin already exists', email: 'admin@store.com' });
+    await User.create({ name: 'Admin User', email: 'admin@store.com', password: 'admin123', role: 'admin' });
+    res.json({ message: '✅ Admin created', email: 'admin@store.com', password: 'admin123' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Server is running', timestamp: new Date().toISOString() });
 });
