@@ -30,8 +30,8 @@ const corsOptions = {
     if (!origin) return callback(null, true);
     if (origin.match(/^http:\/\/localhost:\d+$/)) return callback(null, true);
     if (origin.match(/^http:\/\/(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)\d+\.\d+:\d+$/)) return callback(null, true);
-    // Allow Netlify and Vercel deployments
-    if (origin.match(/\.netlify\.app$/) || origin.match(/\.vercel\.app$/)) return callback(null, true);
+    // Allow Netlify, Vercel and Render deployments
+    if (origin.match(/\.netlify\.app$/) || origin.match(/\.vercel\.app$/) || origin.match(/\.onrender\.com$/)) return callback(null, true);
     if (allowedOrigins.includes(origin)) return callback(null, true);
     callback(new Error(`CORS blocked: ${origin}`));
   },
@@ -48,6 +48,7 @@ const io = new Server(server, {
       if (!origin) return callback(null, true);
       if (origin.match(/^http:\/\/localhost:\d+$/)) return callback(null, true);
       if (origin.match(/^http:\/\/(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)\d+\.\d+:\d+$/)) return callback(null, true);
+      if (origin.match(/\.netlify\.app$/) || origin.match(/\.vercel\.app$/) || origin.match(/\.onrender\.com$/)) return callback(null, true);
       if (allowedOrigins.includes(origin)) return callback(null, true);
       callback(new Error(`CORS blocked: ${origin}`));
     },
