@@ -1,10 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
-import { useAuth } from '../context/AuthContext';
-import { FiShoppingCart, FiStar, FiHeart } from 'react-icons/fi';
+import { FiShoppingCart, FiStar } from 'react-icons/fi';
 import { MdOutlineLocalOffer } from 'react-icons/md';
-import { useState, useEffect } from 'react';
-import api from '../utils/api';
 import toast from 'react-hot-toast';
 
 const CATEGORY_COLORS = {
@@ -20,18 +17,6 @@ const CATEGORY_COLORS = {
 
 export default function ProductCard({ product }) {
   const { dispatch } = useCart();
-  const { user } = useAuth();
-  const [wishlisted, setWishlisted] = useState(false);
-  const [wishlistLoading, setWishlistLoading] = useState(false);
-
-  // Load wishlist state on mount
-  useEffect(() => {
-    if (!user) return;
-    api.get('/wishlist').then(({ data }) => {
-      const ids = data.map((p) => p._id || p);
-      setWishlisted(ids.includes(product._id));
-    }).catch(() => {});
-  }, [user, product._id]);
 
   const addToCart = (e) => {
     e.preventDefault();
@@ -39,23 +24,6 @@ export default function ProductCard({ product }) {
     if (product.stock === 0) return toast.error('Out of stock');
     dispatch({ type: 'ADD', item: product });
     toast.success(`${product.name} added to cart`, { icon: '🛒' });
-  };
-
-  const toggleWishlist = async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!user) return toast.error('Please login to use wishlist');
-    if (wishlistLoading) return;
-    setWishlistLoading(true);
-    try {
-      const { data } = await api.post(`/wishlist/${product._id}`);
-      setWishlisted(data.added);
-      toast.success(data.added ? '❤️ Added to wishlist' : 'Removed from wishlist');
-    } catch {
-      toast.error('Failed to update wishlist');
-    } finally {
-      setWishlistLoading(false);
-    }
   };
 
   const categoryColor = CATEGORY_COLORS[product.category] || CATEGORY_COLORS.Other;
@@ -81,14 +49,10 @@ export default function ProductCard({ product }) {
         {/* Badges */}
         <div className="absolute top-2 left-2 flex flex-col gap-1">
           {isOutOfStock && (
-            <span className="bg-red-500 text-white text-xs font-semibold px-2 py-0.5 rounded-full">
-              Out of Stock
-            </span>
+            <span className="bg-red-500 text-white text-xs font-semibold px-2 py-0.5 rounded-full">Out of Stock</span>
           )}
           {isLowStock && (
-            <span className="bg-orange-400 text-white text-xs font-semibold px-2 py-0.5 rounded-full">
-              Only {product.stock} left
-            </span>
+            <span className="bg-orange-400 text-white text-xs font-semibold px-2 py-0.5 rounded-full">Only {product.stock} left</span>
           )}
           {product.isFeatured && !isOutOfStock && (
             <span className="bg-primary text-white text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
@@ -97,62 +61,39 @@ export default function ProductCard({ product }) {
           )}
         </div>
 
-        {/* Category pill top-right */}
+        {/* Category pill */}
         <span className={`absolute top-2 right-2 text-xs font-medium px-2 py-0.5 rounded-full ${categoryColor}`}>
           {product.category}
         </span>
-
-        {/* Wishlist button */}
-        <button
-          onClick={toggleWishlist}
-          disabled={wishlistLoading}
-          className="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-white/90 dark:bg-gray-800/90 shadow flex items-center justify-center hover:scale-110 transition-transform disabled:opacity-70"
-        >
-          <FiHeart size={14} fill={wishlisted ? '#ef4444' : 'none'} className={wishlisted ? 'text-red-500' : 'text-gray-400'} />
-        </button>
       </div>
 
       {/* Body */}
       <div className="p-4 flex flex-col flex-1 gap-2">
-        {/* Name */}
         <h3 className="font-semibold text-sm leading-snug line-clamp-2 group-hover:text-primary transition-colors">
           {product.name}
         </h3>
 
-        {/* Rating */}
         <div className="flex items-center gap-1">
           {[1, 2, 3, 4, 5].map((s) => (
-            <FiStar
-              key={s}
-              size={12}
-              className="text-yellow-400"
-              fill={s <= Math.round(product.rating || 0) ? 'currentColor' : 'none'}
-            />
+            <FiStar key={s} size={12} className="text-yellow-400"
+              fill={s <= Math.round(product.rating || 0) ? 'currentColor' : 'none'} />
           ))}
           <span className="text-xs text-gray-400 ml-1">({product.numReviews || 0})</span>
         </div>
 
-        {/* Description */}
         {product.description && (
-          <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">
-            {product.description}
-          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{product.description}</p>
         )}
 
-        {/* Price + Cart */}
         <div className="mt-auto pt-2 flex items-center justify-between gap-2">
-          <div>
-            <span className="text-xl font-bold text-primary">₹{product.price}</span>
-          </div>
-
+          <span className="text-xl font-bold text-primary">NPR {product.price}</span>
           <button
             onClick={addToCart}
             disabled={isOutOfStock}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
               ${isOutOfStock
                 ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
-                : 'bg-primary text-white hover:bg-primary-dark active:scale-95'
-              }`}
+                : 'bg-primary text-white hover:bg-primary-dark active:scale-95'}`}
           >
             <FiShoppingCart size={14} />
             {isOutOfStock ? 'Sold Out' : 'Add'}

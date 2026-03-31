@@ -16,7 +16,6 @@ import OrderDetailPage from './pages/OrderDetailPage';
 import ProfilePage from './pages/ProfilePage';
 
 import AboutPage from './pages/AboutPage';
-import WishlistPage from './pages/WishlistPage';
 import RefundPage from './pages/RefundPage';
 import AdminCoupons from './pages/admin/AdminCoupons';
 import AdminRefunds from './pages/admin/AdminRefunds';
@@ -48,7 +47,6 @@ export default function App() {
 
           {/* Protected - Customer */}
           <Route path="/cart" element={<CartPage />} />
-          <Route path="/wishlist" element={<ProtectedRoute><WishlistPage /></ProtectedRoute>} />
           <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
           <Route path="/orders" element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
           <Route path="/order/:id" element={<ProtectedRoute><OrderDetailPage /></ProtectedRoute>} />

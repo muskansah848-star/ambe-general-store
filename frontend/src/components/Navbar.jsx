@@ -73,7 +73,6 @@ export default function Navbar() {
                   <Link to="/admin" className="block px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm">{t.adminDashboard}</Link>
                 )}
                 <Link to="/profile" className="block px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm">{t.profile}</Link>
-                <Link to="/wishlist" className="block px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm">❤️ Wishlist</Link>
                 <Link to="/orders" className="block px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm">{t.myOrders}</Link>
                 <Link to="/refunds" className="block px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm">Refunds</Link>
                 <button onClick={handleLogout} className="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm text-red-500 flex items-center gap-2">
@@ -101,7 +100,6 @@ export default function Navbar() {
             <>
               {user.role === 'admin' && <Link to="/admin" onClick={() => setMenuOpen(false)} className="block py-2">{t.adminDashboard}</Link>}
               <Link to="/profile" onClick={() => setMenuOpen(false)} className="block py-2">{t.profile}</Link>
-              <Link to="/wishlist" onClick={() => setMenuOpen(false)} className="block py-2">❤️ Wishlist</Link>
               <Link to="/orders" onClick={() => setMenuOpen(false)} className="block py-2">{t.myOrders}</Link>
               <Link to="/refunds" onClick={() => setMenuOpen(false)} className="block py-2">Refunds</Link>
               <button onClick={() => { handleLogout(); setMenuOpen(false); }} className="text-red-500 py-2">{t.logout}</button>
