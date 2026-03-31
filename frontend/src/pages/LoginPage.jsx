@@ -182,12 +182,6 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* Demo credentials */}
-        <div className="mt-5 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg text-xs text-blue-700 dark:text-blue-300">
-          <p className="font-semibold mb-1">Demo credentials (after running seed):</p>
-          <p>Admin: <span className="font-mono">admin@store.com</span> / <span className="font-mono">admin123</span></p>
-          <p>Customer: <span className="font-mono">john@example.com</span> / <span className="font-mono">john123</span></p>
-        </div>
       </div>
     </div>
   );
