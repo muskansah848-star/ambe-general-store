@@ -69,7 +69,7 @@ export default function WishlistPage() {
                 <Link to={`/product/${p._id}`}>
                   <h3 className="font-semibold text-sm mb-1 hover:text-primary line-clamp-2">{p.name}</h3>
                 </Link>
-                <p className="text-primary font-bold text-lg mb-3">₹{p.price}</p>
+                <p className="text-primary font-bold text-lg mb-3">NPR {p.price}</p>
                 <div className="flex gap-2">
                   <button
                     onClick={() => moveToCart(p)}

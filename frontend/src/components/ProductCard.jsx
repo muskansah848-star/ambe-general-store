@@ -3,7 +3,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { FiShoppingCart, FiStar, FiHeart } from 'react-icons/fi';
 import { MdOutlineLocalOffer } from 'react-icons/md';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
 
@@ -22,6 +22,16 @@ export default function ProductCard({ product }) {
   const { dispatch } = useCart();
   const { user } = useAuth();
   const [wishlisted, setWishlisted] = useState(false);
+  const [wishlistLoading, setWishlistLoading] = useState(false);
+
+  // Load wishlist state on mount
+  useEffect(() => {
+    if (!user) return;
+    api.get('/wishlist').then(({ data }) => {
+      const ids = data.map((p) => p._id || p);
+      setWishlisted(ids.includes(product._id));
+    }).catch(() => {});
+  }, [user, product._id]);
 
   const addToCart = (e) => {
     e.preventDefault();
@@ -35,12 +45,16 @@ export default function ProductCard({ product }) {
     e.preventDefault();
     e.stopPropagation();
     if (!user) return toast.error('Please login to use wishlist');
+    if (wishlistLoading) return;
+    setWishlistLoading(true);
     try {
       const { data } = await api.post(`/wishlist/${product._id}`);
       setWishlisted(data.added);
       toast.success(data.added ? '❤️ Added to wishlist' : 'Removed from wishlist');
     } catch {
       toast.error('Failed to update wishlist');
+    } finally {
+      setWishlistLoading(false);
     }
   };
 
@@ -91,7 +105,8 @@ export default function ProductCard({ product }) {
         {/* Wishlist button */}
         <button
           onClick={toggleWishlist}
-          className="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-white/90 dark:bg-gray-800/90 shadow flex items-center justify-center hover:scale-110 transition-transform"
+          disabled={wishlistLoading}
+          className="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-white/90 dark:bg-gray-800/90 shadow flex items-center justify-center hover:scale-110 transition-transform disabled:opacity-70"
         >
           <FiHeart size={14} fill={wishlisted ? '#ef4444' : 'none'} className={wishlisted ? 'text-red-500' : 'text-gray-400'} />
         </button>
